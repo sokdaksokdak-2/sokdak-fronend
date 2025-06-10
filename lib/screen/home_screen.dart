@@ -65,7 +65,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> sendTextToServer(String text) async {
-    final uri = Uri.parse('${Config.baseUrl}/api/chatbot/stream');
+    final uri = Uri.parse('${Config.baseUrl}/api/chatbot/chat');
     print('📤 서버로 보낼 텍스트: $text');
 
     try {
@@ -82,43 +82,55 @@ class _HomeScreenState extends State<HomeScreen> {
       );
 
       print('📥 응답 상태 코드: ${response.statusCode}');
-      print('📥 응답 본문: ${response.body}');
 
       if (response.statusCode == 200) {
+        final decodedBody = utf8.decode(response.bodyBytes);
+        final data = jsonDecode(decodedBody);
+        print('📥 응답 디코딩 완료: $data');
+
+        final chatbotMessage = data['chatbot_response'] ?? '(응답 없음)';
+        final emotionSeq = data['emotion_seq'];
+        final emotionScore = data['emotion_score'];
+
         setState(() {
-          serverResponse =
-          response.body.isNotEmpty ? response.body : '(응답은 200이지만 본문이 없음)';
+          serverResponse = chatbotMessage;
           isFirstMessage = false;
         });
 
         final now = DateTime.now();
         final key = DateTime(now.year, now.month, now.day);
 
-        final emotionRecord = await EmotionService.analyzeAndSave(
-          date: now,
-          text: text,
-          title: '감정 분석 기록',
-        );
+        if (emotionSeq != null) {
+          final emotionRecord = EmotionRecord(
+            emotion: 'assets/emotions/${emotionSeq}_emoji.png', // <- 네 이미지 매핑대로
+            title: '감정 분석 기록',
+            content: chatbotMessage,
+          );
 
-        setState(() {
-          if (emotionRecords.containsKey(key)) {
-            emotionRecords[key]!.add(emotionRecord);
-          } else {
-            emotionRecords[key] = [emotionRecord];
-          }
-        });
+          setState(() {
+            if (emotionRecords.containsKey(key)) {
+              emotionRecords[key]!.add(emotionRecord);
+            } else {
+              emotionRecords[key] = [emotionRecord];
+            }
+          });
 
-        print('✅ 감정 기록 저장 완료: $emotionRecord');
+          print('✅ 감정 기록 저장 완료: $emotionRecord');
+        } else {
+          print('⚠️ 감정 번호 없음 → 감정 저장 생략');
+        }
       } else {
+        final errorMessage = utf8.decode(response.bodyBytes);
+        print('❌ 서버 오류 응답 본문: $errorMessage');
         setState(() {
-          serverResponse = '서버 오류: ${response.statusCode}';
+          serverResponse = '서버 오류: ${response.statusCode}\n$errorMessage';
           isFirstMessage = false;
         });
       }
     } catch (e) {
       print("❗예외 발생: $e");
       setState(() {
-        serverResponse = '지금은 통신 중이 아니에요...\n 속닥이가 다시 연결 중! ';
+        serverResponse = '지금은 통신 중이 아니에요...\n 속닥이가 다시 연결 중!';
         isFirstMessage = false;
       });
     }
@@ -156,15 +168,19 @@ class _HomeScreenState extends State<HomeScreen> {
                   right: 0,
                   child: Center(
                     child: CloudBubbleSvg(
-                      text: isFirstMessage
-                          ? '안녕 ${Config.nickname.isNotEmpty ? Config.nickname : '속닥'}!\n오늘 하루는 어땠어??'
-                          : serverResponse,
+                      text:
+                          isFirstMessage
+                              ? '안녕 ${Config.nickname.isNotEmpty ? Config.nickname : '속닥'}!\n오늘 하루는 어땠어??'
+                              : serverResponse,
                       maxWidth: size.width * 0.9,
                       extraHorizontal: 160,
                       extraVertical: 150,
                       bubbleColor: Colors.white,
                       style: const TextStyle(fontSize: 20, color: Colors.black),
-                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 24,
+                        vertical: 20,
+                      ),
                     ),
                   ),
                 ),
@@ -192,7 +208,6 @@ class _HomeScreenState extends State<HomeScreen> {
                     ],
                   ),
                 ),
-
 
                 // 🎤 Lottie 애니메이션
                 if (isListening)
@@ -225,42 +240,50 @@ class _HomeScreenState extends State<HomeScreen> {
                         height: 60,
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
-                          gradient: isListening
-                              ? const LinearGradient(
-                            colors: [Color(0xFFBDBDBD), Color(0xFF8E8E8E)],
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                          )
-                              : const LinearGradient(
-                            colors: [Color(0xFFDADADA), Color(0xFFAAAAAA)],
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                          ),
-                          boxShadow: isListening
-                              ? [
-                            const BoxShadow(
-                              color: Colors.white,
-                              offset: Offset(-2, -2),
-                              blurRadius: 2,
-                            ),
-                            const BoxShadow(
-                              color: Colors.black26,
-                              offset: Offset(2, 2),
-                              blurRadius: 2,
-                            ),
-                          ]
-                              : [
-                            const BoxShadow(
-                              color: Colors.black26,
-                              offset: Offset(4, 4),
-                              blurRadius: 8,
-                            ),
-                            const BoxShadow(
-                              color: Colors.white,
-                              offset: Offset(-4, -4),
-                              blurRadius: 8,
-                            ),
-                          ],
+                          gradient:
+                              isListening
+                                  ? const LinearGradient(
+                                    colors: [
+                                      Color(0xFFBDBDBD),
+                                      Color(0xFF8E8E8E),
+                                    ],
+                                    begin: Alignment.topLeft,
+                                    end: Alignment.bottomRight,
+                                  )
+                                  : const LinearGradient(
+                                    colors: [
+                                      Color(0xFFDADADA),
+                                      Color(0xFFAAAAAA),
+                                    ],
+                                    begin: Alignment.topLeft,
+                                    end: Alignment.bottomRight,
+                                  ),
+                          boxShadow:
+                              isListening
+                                  ? [
+                                    const BoxShadow(
+                                      color: Colors.white,
+                                      offset: Offset(-2, -2),
+                                      blurRadius: 2,
+                                    ),
+                                    const BoxShadow(
+                                      color: Colors.black26,
+                                      offset: Offset(2, 2),
+                                      blurRadius: 2,
+                                    ),
+                                  ]
+                                  : [
+                                    const BoxShadow(
+                                      color: Colors.black26,
+                                      offset: Offset(4, 4),
+                                      blurRadius: 8,
+                                    ),
+                                    const BoxShadow(
+                                      color: Colors.white,
+                                      offset: Offset(-4, -4),
+                                      blurRadius: 8,
+                                    ),
+                                  ],
                         ),
                         child: const Center(
                           child: Icon(Icons.mic, size: 45, color: Colors.black),

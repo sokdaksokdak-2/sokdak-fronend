@@ -75,9 +75,8 @@ class EmotionService {
 
     try {
       final response = await Dio().post(
-        '${Config.baseUrl}/api/emo_calendar/from-text',
+        '${Config.baseUrl}/api/chatbot/complete/${Config.memberSeq}',
         data: {
-          'member_seq': Config.memberSeq,
           'calendar_date': dateStr,
           'text': text,
           'title': title,
@@ -87,6 +86,7 @@ class EmotionService {
           responseType: ResponseType.json,
         ),
       );
+
 
       final data = response.data;
       print('📥 분석 응답 데이터: $data');
