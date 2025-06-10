@@ -86,8 +86,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
       if (response.statusCode == 200) {
         setState(() {
-          serverResponse =
-          response.body.isNotEmpty ? response.body : '(응답은 200이지만 본문이 없음)';
+          serverResponse = response.body.isNotEmpty ? response.body : '(응답은 200이지만 본문이 없음)';
           isFirstMessage = false;
         });
 
@@ -126,8 +125,9 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    String currentEmotion = 'happy'; // 기본 감정 상태
     final size = MediaQuery.of(context).size;
+    final double bubbleVertical = size.height * 0.2;
+    final double bubbleHorizontal = size.width * 0.3;
 
     return Scaffold(
       extendBodyBehindAppBar: true,
@@ -135,141 +135,104 @@ class _HomeScreenState extends State<HomeScreen> {
       appBar: const CustomHeader(),
       body: Stack(
         children: [
-          // ✅ 배경 이미지는 SafeArea 바깥에서 전체 화면에 깔기
           Positioned.fill(
             child: Image.asset(
               'assets/images/moving_happy4.gif',
-              // 'assets/back/${currentEmotion}_back.png',
               fit: BoxFit.cover,
             ),
           ),
-
-          // ✅ SafeArea 안에 콘텐츠
-          // ✅ SafeArea 안에 콘텐츠
           SafeArea(
-            child: Stack(
-              children: [
-                // ✅ 🎈 말풍선 위치 고정
-                Positioned(
-                  top: 0, // ← 여기를 조절해서 더 위로 올릴 수 있음
-                  left: 0,
-                  right: 0,
-                  child: Center(
-                    child: CloudBubbleSvg(
-                      text: isFirstMessage
-                          ? '안녕 ${Config.nickname.isNotEmpty ? Config.nickname : '속닥'}!\n오늘 하루는 어땠어??'
-                          : serverResponse,
-                      maxWidth: size.width * 0.9,
-                      extraHorizontal: 160,
-                      extraVertical: 150,
-                      bubbleColor: Colors.white,
-                      style: const TextStyle(fontSize: 20, color: Colors.black),
-                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final height = constraints.maxHeight;
+                final width = constraints.maxWidth;
+
+                return Column(
+                  children: [
+                    SizedBox(height: height * 0.02),
+
+                    // 말풍선
+                    Padding(
+                      padding: EdgeInsets.symmetric(horizontal: width * 0.05),
+                      child: CloudBubbleSvg(
+                        text: isFirstMessage
+                            ? '안녕 ${Config.nickname.isNotEmpty ? Config.nickname : '속닥'}!\n오늘 하루는 어땠어??'
+                            : serverResponse,
+                        maxWidth: width * 0.9,
+                        extraHorizontal: bubbleHorizontal,
+                        extraVertical: bubbleVertical,
+                        bubbleColor: Colors.white,
+                        style: const TextStyle(fontSize: 20, color: Colors.black),
+                        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+                      ),
                     ),
-                  ),
-                ),
 
-                // ✅ 기존 콘텐츠는 아래로 정렬되도록 Column 유지
-                Padding(
-                  padding: const EdgeInsets.only(top: 0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      const SizedBox(height: 250), // 캐릭터와 말풍선 사이 간격 조절
-                      const SizedBox(height: 8),
+                    SizedBox(height: height * 0.05),
 
-                      // 캐릭터 이미지
-                      // SizedBox(
-                      //   height: 330,
-                      //   child: Center(
-                      //     child: Image.asset(
-                      //       'assets/images/${currentEmotion}.png',
-                      //       fit: BoxFit.contain,
-                      //     ),
-                      //   ),
-                      // ),
-                      const SizedBox(height: 40),
-                    ],
-                  ),
-                ),
+                    // 캐릭터 이미지
+                    Expanded(
+                      child: Center(
+                        child: Image.asset(
+                          'assets/images/happy.png', // 예시: currentEmotion 상태에 따라 변경 가능
+                          fit: BoxFit.contain,
+                          height: height * 0.4,
+                        ),
+                      ),
+                    ),
 
-
-                // 🎤 Lottie 애니메이션
-                if (isListening)
-                  Align(
-                    alignment: Alignment.bottomCenter,
-                    child: Padding(
-                      padding: const EdgeInsets.only(bottom: 10),
-                      child: SizedBox(
-                        width: 120,
-                        height: 120,
+                    // 마이크 애니메이션
+                    if (isListening)
+                      SizedBox(
+                        width: width * 0.25,
+                        height: width * 0.25,
                         child: Lottie.asset(
                           'assets/lottie/mic.json',
                           repeat: true,
                           animate: true,
                         ),
                       ),
-                    ),
-                  ),
 
-                // 🎤 마이크 버튼
-                Align(
-                  alignment: Alignment.bottomCenter,
-                  child: Padding(
-                    padding: const EdgeInsets.only(bottom: 40),
-                    child: GestureDetector(
-                      onTap: _toggleListening,
-                      child: AnimatedContainer(
-                        duration: const Duration(milliseconds: 150),
-                        width: 60,
-                        height: 60,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          gradient: isListening
-                              ? const LinearGradient(
-                            colors: [Color(0xFFBDBDBD), Color(0xFF8E8E8E)],
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                          )
-                              : const LinearGradient(
-                            colors: [Color(0xFFDADADA), Color(0xFFAAAAAA)],
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
+                    // 마이크 버튼
+                    Padding(
+                      padding: EdgeInsets.only(bottom: height * 0.05),
+                      child: GestureDetector(
+                        onTap: _toggleListening,
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 150),
+                          width: 60,
+                          height: 60,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            gradient: isListening
+                                ? const LinearGradient(
+                              colors: [Color(0xFFBDBDBD), Color(0xFF8E8E8E)],
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                            )
+                                : const LinearGradient(
+                              colors: [Color(0xFFDADADA), Color(0xFFAAAAAA)],
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                            ),
+                            boxShadow: isListening
+                                ? [
+                              const BoxShadow(color: Colors.white, offset: Offset(-2, -2), blurRadius: 2),
+                              const BoxShadow(color: Colors.black26, offset: Offset(2, 2), blurRadius: 2),
+                            ]
+                                : [
+                              const BoxShadow(color: Colors.black26, offset: Offset(4, 4), blurRadius: 8),
+                              const BoxShadow(color: Colors.white, offset: Offset(-4, -4), blurRadius: 8),
+                            ],
                           ),
-                          boxShadow: isListening
-                              ? [
-                            const BoxShadow(
-                              color: Colors.white,
-                              offset: Offset(-2, -2),
-                              blurRadius: 2,
-                            ),
-                            const BoxShadow(
-                              color: Colors.black26,
-                              offset: Offset(2, 2),
-                              blurRadius: 2,
-                            ),
-                          ]
-                              : [
-                            const BoxShadow(
-                              color: Colors.black26,
-                              offset: Offset(4, 4),
-                              blurRadius: 8,
-                            ),
-                            const BoxShadow(
-                              color: Colors.white,
-                              offset: Offset(-4, -4),
-                              blurRadius: 8,
-                            ),
-                          ],
-                        ),
-                        child: const Center(
-                          child: Icon(Icons.mic, size: 45, color: Colors.black),
+                          child: const Center(
+                            child: Icon(Icons.mic, size: 45, color: Colors.black),
+                          ),
                         ),
                       ),
                     ),
-                  ),
-                ),
-              ],
+                  ],
+                );
+              },
             ),
           ),
         ],
