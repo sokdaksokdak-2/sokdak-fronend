@@ -65,7 +65,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> sendTextToServer(String text) async {
-    final uri = Uri.parse('${Config.baseUrl}/api/chatbot/stream');
+    final uri = Uri.parse('${Config.baseUrl}/api/chatbot/chat');
     print('📤 서버로 보낼 텍스트: $text');
 
     try {
@@ -82,9 +82,16 @@ class _HomeScreenState extends State<HomeScreen> {
       );
 
       print('📥 응답 상태 코드: ${response.statusCode}');
-      print('📥 응답 본문: ${response.body}');
 
       if (response.statusCode == 200) {
+        final decodedBody = utf8.decode(response.bodyBytes);
+        final data = jsonDecode(decodedBody);
+        print('📥 응답 디코딩 완료: $data');
+
+        final chatbotMessage = data['chatbot_response'] ?? '(응답 없음)';
+        final emotionSeq = data['emotion_seq'];
+        final emotionScore = data['emotion_score'];
+
         setState(() {
           serverResponse = response.body.isNotEmpty ? response.body : '(응답은 200이지만 본문이 없음)';
           isFirstMessage = false;
@@ -93,31 +100,37 @@ class _HomeScreenState extends State<HomeScreen> {
         final now = DateTime.now();
         final key = DateTime(now.year, now.month, now.day);
 
-        final emotionRecord = await EmotionService.analyzeAndSave(
-          date: now,
-          text: text,
-          title: '감정 분석 기록',
-        );
+        if (emotionSeq != null) {
+          final emotionRecord = EmotionRecord(
+            emotion: 'assets/emotions/${emotionSeq}_emoji.png', // <- 네 이미지 매핑대로
+            title: '감정 분석 기록',
+            content: chatbotMessage,
+          );
 
-        setState(() {
-          if (emotionRecords.containsKey(key)) {
-            emotionRecords[key]!.add(emotionRecord);
-          } else {
-            emotionRecords[key] = [emotionRecord];
-          }
-        });
+          setState(() {
+            if (emotionRecords.containsKey(key)) {
+              emotionRecords[key]!.add(emotionRecord);
+            } else {
+              emotionRecords[key] = [emotionRecord];
+            }
+          });
 
-        print('✅ 감정 기록 저장 완료: $emotionRecord');
+          print('✅ 감정 기록 저장 완료: $emotionRecord');
+        } else {
+          print('⚠️ 감정 번호 없음 → 감정 저장 생략');
+        }
       } else {
+        final errorMessage = utf8.decode(response.bodyBytes);
+        print('❌ 서버 오류 응답 본문: $errorMessage');
         setState(() {
-          serverResponse = '서버 오류: ${response.statusCode}';
+          serverResponse = '서버 오류: ${response.statusCode}\n$errorMessage';
           isFirstMessage = false;
         });
       }
     } catch (e) {
       print("❗예외 발생: $e");
       setState(() {
-        serverResponse = '지금은 통신 중이 아니에요...\n 속닥이가 다시 연결 중! ';
+        serverResponse = '지금은 통신 중이 아니에요...\n 속닥이가 다시 연결 중!';
         isFirstMessage = false;
       });
     }
@@ -164,11 +177,11 @@ class _HomeScreenState extends State<HomeScreen> {
                         bubbleColor: Colors.white,
                         style: const TextStyle(fontSize: 20, color: Colors.black),
                         padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+
                       ),
                     ),
 
                     SizedBox(height: height * 0.05),
-
                     // 캐릭터 이미지
                     Expanded(
                       child: Center(
@@ -185,13 +198,13 @@ class _HomeScreenState extends State<HomeScreen> {
                       SizedBox(
                         width: width * 0.25,
                         height: width * 0.25,
+
                         child: Lottie.asset(
                           'assets/lottie/mic.json',
                           repeat: true,
                           animate: true,
                         ),
                       ),
-
                     // 마이크 버튼
                     Padding(
                       padding: EdgeInsets.only(bottom: height * 0.05),
@@ -227,6 +240,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           child: const Center(
                             child: Icon(Icons.mic, size: 45, color: Colors.black),
                           ),
+
                         ),
                       ),
                     ),

@@ -12,19 +12,18 @@ import 'package:sdsd/main.dart';
 
 void main() {
   testWidgets('Counter increments smoke test', (WidgetTester tester) async {
-    // Build our app and trigger a frame.
-    await tester.pumpWidget(const MyApp());
+    await tester.pumpWidget(
+      MaterialApp(
+        home: MyApp(initialScreen: const Placeholder()), // ✅ 수정됨
+      ),
+    );
 
-    // Verify that our counter starts at 0.
-    expect(find.text('0'), findsOneWidget);
-    expect(find.text('1'), findsNothing);
+    // 화면에 '0'이 안 보일 수도 있으니 아래 라인 제거 또는 수정
+    // expect(find.text('0'), findsOneWidget);
 
-    // Tap the '+' icon and trigger a frame.
-    await tester.tap(find.byIcon(Icons.add));
-    await tester.pump();
-
-    // Verify that our counter has incremented.
-    expect(find.text('0'), findsNothing);
-    expect(find.text('1'), findsOneWidget);
+    // 아래 테스트는 네이티브 Counter 예제이므로, 실제 앱에 맞게 삭제하거나 대체 가능
+    // await tester.tap(find.byIcon(Icons.add));
+    // await tester.pump();
+    // expect(find.text('1'), findsOneWidget);
   });
 }

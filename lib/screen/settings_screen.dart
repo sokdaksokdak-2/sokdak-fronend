@@ -1,7 +1,10 @@
+// lib/screen/settings/settings_screen.dart
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+
 import 'package:sdsd/config.dart';
+import 'package:sdsd/main.dart'; // ← MyAppState 접근
 import 'package:sdsd/onboarding/intro_screen.dart';
 import 'package:sdsd/screen/login_screen.dart';
 import 'package:sdsd/screen/settings/feedback_screen.dart';
@@ -9,11 +12,58 @@ import 'package:sdsd/screen/settings/nickname_edit_screen.dart';
 import 'package:sdsd/screen/settings/notification_setting_screen.dart';
 import 'package:sdsd/screen/settings/privacy_policy_screen.dart';
 import 'package:sdsd/screen/settings/terms_of_service_screen.dart';
-import '../widgets/custom_header.dart';
-import 'settings/theme_setting_screen.dart';
+import 'package:sdsd/screen/settings/theme_setting_screen.dart';
+import 'package:sdsd/widgets/custom_header.dart';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
+
+  // ───── 로그아웃 메인 로직 ──────────────────────────────────────────────
+  Future<void> _logoutAndGoToIntro(BuildContext context) async {
+
+    debugPrint('🧼 로그아웃 시작');
+    debugPrint('🧼 로그아웃 전 accessToken: ${Config.accessToken}');
+
+    await _revokeNaverToken(); // 1) 네이버 토큰 폐기 (실패해도 무시)
+    await Config.clear(); // 2) 앱 내부 상태 초기화 (SharedPreferences 포함)
+
+    debugPrint('🧼 로그아웃 후 accessToken: ${Config.accessToken}');
+
+    // 3) Navigator 스택 초기화 후 IntroScreen
+    Navigator.pushAndRemoveUntil(
+      context,
+      MaterialPageRoute(builder: (_) => const IntroScreen()),
+      (_) => false,
+    );
+
+    // 4) 루트(MyAppState)의 _currentScreen 도 IntroScreen 으로
+    context.findAncestorStateOfType<MyAppState>()?.resetToIntro();
+  }
+
+  /// 네이버 토큰 폐기(grant_type=delete). 다른 provider면 수정하세요.
+  Future<void> _revokeNaverToken() async {
+    if (Config.accessToken.isEmpty) return;
+
+    // TODO: 본인 네이버 애플리케이션의 client_id / client_secret 로 교체
+    const clientId = 'AuARYXdKUbOgxePEuV7_';
+    const clientSecret = 'pdhpc9WwfW';
+
+    final uri = Uri.parse(
+      'https://nid.naver.com/oauth2.0/token'
+      '?grant_type=delete'
+      '&client_id=$clientId'
+      '&client_secret=$clientSecret'
+      '&access_token=${Uri.encodeComponent(Config.accessToken)}'
+      '&service_provider=NAVER',
+    );
+
+    try {
+      final res = await http.get(uri);
+      debugPrint('네이버 토큰 폐기 응답 → ${res.statusCode} / ${res.body}');
+    } catch (e) {
+      debugPrint('네이버 토큰 폐기 실패: $e');
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -84,7 +134,7 @@ class SettingsScreen extends StatelessWidget {
               dense: true,
               minVerticalPadding: 0,
               contentPadding: const EdgeInsets.symmetric(horizontal: 16),
-              leading: _getIconForTitle(title),
+              leading: _iconForTitle(title),
               title: Text(
                 title,
                 style: const TextStyle(
@@ -102,50 +152,61 @@ class SettingsScreen extends StatelessWidget {
                 title: Text(item, style: const TextStyle(fontSize: 16)),
                 trailing: const Icon(Icons.chevron_right, size: 18),
                 onTap: () {
-                  if (item == '회원탈퇴') {
-                    _showDeleteAccountDialog(context);
-                  } else if (item == '로그아웃') {
-                    _showLogoutDialog(context);
-                  } else if (item == '테마 색상 변경') {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => const ThemeSettingScreen(),
-                      ),
-                    );
-                  } else if (item == '닉네임 변경') {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => const NicknameEditScreen(),
-                      ),
-                    );
-                  } else if (item == '감정 기록 알림 시간 설정') {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => const NotificationSettingScreen(),
-                      ),
-                    );
-                  } else if (item == '서비스 이용약관') {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => const TermsOfServiceScreen(),
-                      ),
-                    );
-                  } else if (item == '개인정보 처리방침') {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => const PrivacyPolicyScreen(),
-                      ),
-                    );
-                  } else if (item == '의견 보내기 / 도움 요청하기') {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (_) => const FeedbackScreen()),
-                    );
+                  switch (item) {
+                    case '회원탈퇴':
+                      _showDeleteAccountDialog(context);
+                      break;
+                    case '로그아웃':
+                      _showLogoutDialog(context);
+                      break;
+                    case '테마 색상 변경':
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const ThemeSettingScreen(),
+                        ),
+                      );
+                      break;
+                    case '닉네임 변경':
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const NicknameEditScreen(),
+                        ),
+                      );
+                      break;
+                    case '감정 기록 알림 시간 설정':
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const NotificationSettingScreen(),
+                        ),
+                      );
+                      break;
+                    case '서비스 이용약관':
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const TermsOfServiceScreen(),
+                        ),
+                      );
+                      break;
+                    case '개인정보 처리방침':
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const PrivacyPolicyScreen(),
+                        ),
+                      );
+                      break;
+                    case '의견 보내기 / 도움 요청하기':
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const FeedbackScreen(),
+                        ),
+                      );
+                      break;
                   }
                 },
               ),
@@ -156,37 +217,36 @@ class SettingsScreen extends StatelessWidget {
     );
   }
 
+  // ───── 로그아웃 다이얼로그 ──────────────────────────────────────────────
   void _showLogoutDialog(BuildContext context) {
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (context) {
-        return AlertDialog(
-          backgroundColor: Colors.white,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-          contentPadding: EdgeInsets.zero,
-          content: SizedBox(
-            width: MediaQuery.of(context).size.width * 0.9,
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(24, 32, 24, 12),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Text(
-                    '로그아웃 하시겠습니까?',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(fontSize: 16),
-                  ),
-                  const SizedBox(height: 24),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: SizedBox(
-                          height: 40,
+      builder:
+          (dialogContext) => AlertDialog(
+            backgroundColor: Colors.white,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
+            contentPadding: EdgeInsets.zero,
+            content: SizedBox(
+              width: MediaQuery.of(context).size.width * 0.9,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(24, 32, 24, 12),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Text(
+                      '로그아웃 하시겠습니까?',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(fontSize: 16),
+                    ),
+                    const SizedBox(height: 24),
+                    Row(
+                      children: [
+                        Expanded(
                           child: ElevatedButton(
-                            onPressed: () => Navigator.pop(context),
+                            onPressed: () => Navigator.pop(dialogContext),
                             style: ElevatedButton.styleFrom(
                               backgroundColor: Colors.grey[100],
                               foregroundColor: Colors.black,
@@ -198,25 +258,12 @@ class SettingsScreen extends StatelessWidget {
                             child: const Text('취소'),
                           ),
                         ),
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: SizedBox(
-                          height: 40,
+                        const SizedBox(width: 8),
+                        Expanded(
                           child: ElevatedButton(
-                            onPressed: () {
-                              Config.accessToken = '';
-                              Config.memberSeq = -1;
-                              Config.nickname = '';
-
-                              Navigator.pop(context);
-                              Navigator.pushAndRemoveUntil(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (_) => const LoginScreen(),
-                                ),
-                                (route) => false,
-                              );
+                            onPressed: () async {
+                              Navigator.pop(dialogContext);
+                              await _logoutAndGoToIntro(context);
                             },
                             style: ElevatedButton.styleFrom(
                               backgroundColor: Colors.green,
@@ -228,50 +275,47 @@ class SettingsScreen extends StatelessWidget {
                             child: const Text('확인'),
                           ),
                         ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                ],
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                  ],
+                ),
               ),
             ),
           ),
-        );
-      },
     );
   }
 
+  // ───── 회원탈퇴 다이얼로그 (기존 로직 유지) ───────────────────────────────
   void _showDeleteAccountDialog(BuildContext context) {
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (context) {
-        return AlertDialog(
-          backgroundColor: Colors.white,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-          contentPadding: EdgeInsets.zero,
-          content: SizedBox(
-            width: MediaQuery.of(context).size.width * 0.9,
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(24, 32, 24, 12),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Text(
-                    '모든 감정 기록은 삭제됩니다.\n탈퇴하시겠습니까?',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(fontSize: 16),
-                  ),
-                  const SizedBox(height: 24),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: SizedBox(
-                          height: 40,
+      builder:
+          (dialogContext) => AlertDialog(
+            backgroundColor: Colors.white,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
+            contentPadding: EdgeInsets.zero,
+            content: SizedBox(
+              width: MediaQuery.of(context).size.width * 0.9,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(24, 32, 24, 12),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Text(
+                      '모든 감정 기록은 삭제됩니다.\n탈퇴하시겠습니까?',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(fontSize: 16),
+                    ),
+                    const SizedBox(height: 24),
+                    Row(
+                      children: [
+                        Expanded(
                           child: ElevatedButton(
-                            onPressed: () => Navigator.pop(context),
+                            onPressed: () => Navigator.pop(dialogContext),
                             style: ElevatedButton.styleFrom(
                               backgroundColor: Colors.grey[100],
                               foregroundColor: Colors.black,
@@ -283,21 +327,16 @@ class SettingsScreen extends StatelessWidget {
                             child: const Text('취소'),
                           ),
                         ),
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: SizedBox(
-                          height: 40,
+                        const SizedBox(width: 8),
+                        Expanded(
                           child: ElevatedButton(
                             onPressed: () async {
-                              Navigator.pop(context);
-
+                              Navigator.pop(dialogContext);
                               final uri = Uri.parse(
                                 '${Config.baseUrl}/api/member/${Config.memberSeq}',
                               );
-
                               try {
-                                final response = await http.delete(
+                                final res = await http.delete(
                                   uri,
                                   headers: {
                                     'Content-Type': 'application/json',
@@ -305,19 +344,18 @@ class SettingsScreen extends StatelessWidget {
                                         'Bearer ${Config.accessToken}',
                                   },
                                 );
-
-                                if (response.statusCode == 200) {
-                                  Config.accessToken = '';
-                                  Config.memberSeq = -1;
-                                  Config.nickname = '';
-
+                                if (res.statusCode == 200) {
+                                  await Config.clear();
                                   Navigator.pushAndRemoveUntil(
                                     context,
                                     MaterialPageRoute(
                                       builder: (_) => const IntroScreen(),
                                     ),
-                                    (route) => false,
+                                    (_) => false,
                                   );
+                                  context
+                                      .findAncestorStateOfType<MyAppState>()
+                                      ?.resetToIntro();
                                 } else {
                                   ScaffoldMessenger.of(context).showSnackBar(
                                     const SnackBar(
@@ -326,7 +364,7 @@ class SettingsScreen extends StatelessWidget {
                                   );
                                 }
                               } catch (e) {
-                                print('❗ 탈퇴 중 예외 발생: $e');
+                                debugPrint('탈퇴 중 예외: $e');
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   const SnackBar(content: Text('서버 오류')),
                                 );
@@ -342,20 +380,18 @@ class SettingsScreen extends StatelessWidget {
                             child: const Text('확인'),
                           ),
                         ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                ],
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                  ],
+                ),
               ),
             ),
           ),
-        );
-      },
     );
   }
 
-  Icon _getIconForTitle(String title) {
+  Icon _iconForTitle(String title) {
     if (title.contains('내 정보')) return const Icon(Icons.person_outline);
     if (title.contains('앱 정보')) return const Icon(Icons.info_outline);
     if (title.contains('계정')) return const Icon(Icons.logout_outlined);

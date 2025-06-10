@@ -1,5 +1,6 @@
+// lib/onboarding/intro_screen.dart
 import 'package:flutter/material.dart';
-import 'package:app_links/app_links.dart'; // 딥링크 처리용
+import 'package:app_links/app_links.dart';
 import 'package:sdsd/config.dart';
 import 'package:sdsd/screen/main_screen.dart';
 import 'package:sdsd/screen/start_screen.dart';
@@ -15,9 +16,12 @@ class IntroScreen extends StatefulWidget {
 class _IntroScreenState extends State<IntroScreen> {
   final PageController _pageController = PageController();
   int _currentIndex = 0;
-  final AppLinks _appLinks = AppLinks(); // ✅ 딥링크 감지용
 
-  final List<Map<String, dynamic>> pages = [
+  // 딥링크 감지용
+  final AppLinks _appLinks = AppLinks();
+
+  // 온보딩 콘텐츠
+  final List<Map<String, String>> pages = [
     {
       'title': '안녕!\n오늘부터 우리랑 이야기 나눠볼래?',
       'image': 'assets/images/team.png',
@@ -43,15 +47,20 @@ class _IntroScreenState extends State<IntroScreen> {
   @override
   void initState() {
     super.initState();
-    _checkDeepLink(); // ✅ 앱 진입 시 딥링크 체크
+    _checkDeepLink(); // cold-start 시 한 번
   }
 
+  /// OAuth 콜백 딥링크 처리
   Future<void> _checkDeepLink() async {
     try {
       final uri = await _appLinks.getInitialAppLink();
+      if (uri == null) return;
 
-      if (uri != null &&
-          uri.scheme == 'myapp' &&
+      final link = uri.toString();
+      if (Config.accessToken.isNotEmpty) return;
+      if (Config.lastOAuthLink == link) return;
+
+      if (uri.scheme == 'myapp' &&
           uri.host == 'oauth' &&
           uri.path == '/callback') {
         final accessToken = uri.queryParameters['access_token'];
@@ -60,12 +69,15 @@ class _IntroScreenState extends State<IntroScreen> {
         final memberSeq = int.tryParse(uri.queryParameters['member_seq'] ?? '');
 
         if (accessToken != null && memberSeq != null) {
+          Config.lastOAuthLink = link;
+
+          // ❌ cascade(X) → ✅ 개별 대입(O)
           Config.accessToken = accessToken;
           Config.refreshToken = refreshToken ?? '';
           Config.nickname = nickname ?? '';
           Config.memberSeq = memberSeq;
 
-          final goTo =
+          final Widget target =
               (nickname == null || nickname.isEmpty)
                   ? const NicknameSetupScreen()
                   : const MainScreen();
@@ -73,16 +85,17 @@ class _IntroScreenState extends State<IntroScreen> {
           if (mounted) {
             Navigator.pushReplacement(
               context,
-              MaterialPageRoute(builder: (_) => goTo),
+              MaterialPageRoute(builder: (_) => target),
             );
           }
         }
       }
     } catch (e) {
-      print('❌ 딥링크 처리 오류: $e');
+      debugPrint('❌ 딥링크 처리 오류: $e');
     }
   }
 
+  // 다음으로
   void _nextPage() {
     if (_currentIndex < pages.length - 1) {
       _pageController.nextPage(
@@ -97,6 +110,7 @@ class _IntroScreenState extends State<IntroScreen> {
     }
   }
 
+  // 이전으로
   void _prevPage() {
     if (_currentIndex > 0) {
       _pageController.previousPage(
@@ -123,9 +137,9 @@ class _IntroScreenState extends State<IntroScreen> {
               child: PageView.builder(
                 controller: _pageController,
                 itemCount: pages.length,
-                onPageChanged: (index) => setState(() => _currentIndex = index),
-                itemBuilder: (_, index) {
-                  final page = pages[index];
+                onPageChanged: (idx) => setState(() => _currentIndex = idx),
+                itemBuilder: (_, idx) {
+                  final page = pages[idx];
                   return Padding(
                     padding: const EdgeInsets.symmetric(
                       horizontal: 24,
@@ -135,22 +149,22 @@ class _IntroScreenState extends State<IntroScreen> {
                       children: [
                         const SizedBox(height: 50),
                         Text(
-                          page['title'],
-                          style: const TextStyle(fontSize: 20),
+                          page['title']!,
                           textAlign: TextAlign.center,
+                          style: const TextStyle(fontSize: 20),
                         ),
                         Image.asset(
-                          page['image'],
+                          page['image']!,
                           height: 340,
                           fit: BoxFit.contain,
                         ),
                         Text(
-                          page['description'],
+                          page['description']!,
+                          textAlign: TextAlign.center,
                           style: const TextStyle(
                             fontSize: 14,
                             color: Colors.black87,
                           ),
-                          textAlign: TextAlign.center,
                         ),
                       ],
                     ),
@@ -162,13 +176,13 @@ class _IntroScreenState extends State<IntroScreen> {
               mainAxisAlignment: MainAxisAlignment.center,
               children: List.generate(
                 pages.length,
-                (index) => Container(
+                (idx) => Container(
                   margin: const EdgeInsets.all(10),
                   width: 10,
                   height: 10,
                   decoration: BoxDecoration(
                     color:
-                        _currentIndex == index
+                        _currentIndex == idx
                             ? const Color(0xFF28B960)
                             : Colors.grey.shade300,
                     shape: BoxShape.circle,
