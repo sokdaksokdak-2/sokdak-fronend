@@ -23,7 +23,7 @@ class BluetoothController {
     List<BluetoothDevice> bondedDevices = await _bluetooth.getBondedDevices();
 
     for (BluetoothDevice device in bondedDevices) {
-      if (['HC-06', 'Arduino', '무드등등'].contains(device.name)) {
+      if (['무드등등'].contains(device.name)) {
         try {
           print('🔌 ${device.name} (${device.address})에 연결 시도 중...');
           _connection = await BluetoothConnection.toAddress(device.address);
@@ -60,10 +60,11 @@ class BluetoothController {
     }
 
     try {
-      String message = "$colorCode\n"; // 예: "#FF0000\n"
+      final message = colorCode.trim() + '\n'; // ✅ 여기에서만 \n 붙이기
+      print('📤 전송할 메시지: $message');
       _connection!.output.add(utf8.encode(message));
       await _connection!.output.allSent;
-      print('🎨 색상 코드 전송 완료: $colorCode');
+      print('🎨 색상 코드 전송 완료: $message');
     } catch (e) {
       print('❌ 전송 실패: $e');
     }

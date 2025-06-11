@@ -136,7 +136,7 @@ class _HomeScreenState extends State<HomeScreen> {
         }();
 
         setState(() {
-          serverResponse = '서버 오류: ${response.statusCode}\n$errorMessage';
+          serverResponse = '잘못들었습니다?';
           isFirstMessage = false;
         });
       }
@@ -281,16 +281,16 @@ class _HomeScreenState extends State<HomeScreen> {
 String getColorCodeByEmotionSeq(int seq) {
   switch (seq) {
     case 1:
-      return '#FFD700'; // 기쁨
+      return '#FFD700'; // 기쁨 (노랑)
     case 2:
-      return '#FFA500'; // 불안
+      return '#1E90FF'; // 슬픔 (파랑)
     case 3:
-      return '#1E90FF'; // 슬픔
+      return '#E53EF2'; // 불안 (보라)
     case 4:
-      return '#32CD32'; // 평온
+      return '#960018'; // 화남 (빨강)
     case 5:
-      return '#FF4500'; // 분노
+      return '#32CD32'; // 평온 (연녹)
     default:
-      return '#FFFFFF'; // 기본 (흰색)
+      return '#FFFFFF'; // 기본값 (흰색)
   }
 }
