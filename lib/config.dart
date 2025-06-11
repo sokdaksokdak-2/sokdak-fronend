@@ -3,7 +3,9 @@ import 'package:flutter/foundation.dart';
 
 class Config {
   // ✅ 개발 중엔 이걸 사용
-  static const String baseUrl = 'http://192.168.219.129:8000';
+
+  static const String baseUrl = 'http://192.168.219.159:8000';
+
 
   // 로그인 후 저장되는 값
   static int memberSeq = -1;

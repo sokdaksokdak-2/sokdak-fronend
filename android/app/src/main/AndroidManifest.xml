@@ -1,6 +1,19 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"> <!-- ✅ tools 네임스페이스 추가 -->
 
+    <!-- ✅ 블루투스 권한 (Android 12 이하 포함) -->
+    <uses-permission android:name="android.permission.BLUETOOTH" />
+    <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" />
+
+    <!-- ✅ Android 12 이상용 (SDK 31 이상) -->
+    <uses-permission android:name="android.permission.BLUETOOTH_SCAN" />
+    <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
+    <uses-permission android:name="android.permission.BLUETOOTH_ADVERTISE" />
+
+    <!-- ✅ 위치 권한 (Android 6 이상에서 BLE 스캔 필요) -->
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+
+
     <!-- ✅ 마이크 권한 -->
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
 
@@ -8,6 +21,8 @@
     <uses-permission
         android:name="android.permission.POST_NOTIFICATIONS"
         tools:targetApi="33" />
+
+
 
     <application
         android:name="${applicationName}"
