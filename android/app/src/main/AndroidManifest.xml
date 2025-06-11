@@ -65,4 +65,17 @@
         </intent>
     </queries>
 
+    <!--  외부 http 연결 해결  -->
+    <queries>
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="http" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="https" />
+        </intent>
+    </queries>
+
+
 </manifest>
