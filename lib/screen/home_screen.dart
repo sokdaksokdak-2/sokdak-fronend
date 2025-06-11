@@ -2,12 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:lottie/lottie.dart';
 import 'package:sdsd/config.dart';
 import 'package:sdsd/models/emotion_record.dart';
-import 'package:sdsd/services/emotion_service.dart';
-import 'package:sdsd/widgets/cloud_bubble_svg.dart';
 import 'package:speech_to_text/speech_to_text.dart' as stt;
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:sdsd/widgets/custom_header.dart';
+import 'package:sdsd/utils/bluetooth_controller_serial.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -18,17 +17,34 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   late stt.SpeechToText _speech;
+  BluetoothController? _bluetoothController; // ✅ nullable 처리
   bool isListening = false;
   bool isFirstMessage = true;
   String spokenText = '';
   String serverResponse = '';
-
   Map<DateTime, List<EmotionRecord>> emotionRecords = {};
+  int? _previousEmotionSeq;
 
   @override
   void initState() {
     super.initState();
     _speech = stt.SpeechToText();
+    _bluetoothController = BluetoothController();
+    _initializeBluetooth();
+  }
+
+  Future<void> _initializeBluetooth() async {
+    await _bluetoothController?.connectToArduino();
+    if (!(_bluetoothController?.isConnected ?? false)) {
+      print('⚠️ 블루투스 연결 실패 - 기기를 확인하세요.');
+    }
+  }
+
+  @override
+  void dispose() {
+    _speech.stop();
+    _bluetoothController?.disconnect(); // ✅ 안전하게 종료
+    super.dispose();
   }
 
   Future<void> _toggleListening() async {
@@ -48,10 +64,7 @@ class _HomeScreenState extends State<HomeScreen> {
             setState(() {
               spokenText = result.recognizedWords;
             });
-            print('🎤 인식된 텍스트: ${result.recognizedWords}');
-
             if (result.finalResult) {
-              print('✅ 최종 인식 텍스트: ${result.recognizedWords}');
               sendTextToServer(result.recognizedWords);
             }
           },
@@ -60,13 +73,11 @@ class _HomeScreenState extends State<HomeScreen> {
     } else {
       setState(() => isListening = false);
       _speech.stop();
-      print('🛑 음성 인식 중지');
     }
   }
 
   Future<void> sendTextToServer(String text) async {
     final uri = Uri.parse('${Config.baseUrl}/api/chatbot/chat');
-    print('📤 서버로 보낼 텍스트: $text');
 
     try {
       final response = await http.post(
@@ -81,120 +92,111 @@ class _HomeScreenState extends State<HomeScreen> {
         }),
       );
 
-      print('📥 응답 상태 코드: ${response.statusCode}');
-      print('📥 응답 본문: ${response.body}');
-
       if (response.statusCode == 200) {
+        final decodedBody = utf8.decode(response.bodyBytes);
+        final data = jsonDecode(decodedBody);
+
+        final chatbotMessage = data['chatbot_response'] ?? '(응답 없음)';
+        final emotionSeq = data['emotion_seq'];
+
         setState(() {
-          serverResponse =
-          response.body.isNotEmpty ? response.body : '(응답은 200이지만 본문이 없음)';
+          serverResponse = chatbotMessage;
           isFirstMessage = false;
         });
 
         final now = DateTime.now();
         final key = DateTime(now.year, now.month, now.day);
 
-        final emotionRecord = await EmotionService.analyzeAndSave(
-          date: now,
-          text: text,
-          title: '감정 분석 기록',
-        );
+        if (emotionSeq != null) {
+          final record = EmotionRecord(
+            emotion: 'assets/emotions/${emotionSeq}_emoji.png',
+            title: '감정 분석 기록',
+            content: chatbotMessage,
+          );
 
-        setState(() {
-          if (emotionRecords.containsKey(key)) {
-            emotionRecords[key]!.add(emotionRecord);
-          } else {
-            emotionRecords[key] = [emotionRecord];
-          }
-        });
+          setState(() {
+            emotionRecords.putIfAbsent(key, () => []).add(record);
+          });
 
-        print('✅ 감정 기록 저장 완료: $emotionRecord');
+          final colorCode = getColorCodeByEmotionSeq(emotionSeq);
+          await _bluetoothController?.sendEmotionColor(colorCode); // ✅ 안전하게 전송
+          print('✅ 감정 색상 전송 완료: $colorCode');
+
+          _previousEmotionSeq = emotionSeq;
+        } else {
+          print('⚠️ 감정 번호 없음 → 감정 저장 생략');
+        }
       } else {
+        final errorMessage = () {
+          try {
+            return utf8.decode(response.bodyBytes);
+          } catch (_) {
+            return '(에러 메시지를 읽을 수 없음)';
+          }
+        }();
+
         setState(() {
-          serverResponse = '서버 오류: ${response.statusCode}';
+          serverResponse = '서버 오류: ${response.statusCode}\n$errorMessage';
           isFirstMessage = false;
         });
       }
     } catch (e) {
-      print("❗예외 발생: $e");
       setState(() {
-        serverResponse = '지금은 통신 중이 아니에요...\n 속닥이가 다시 연결 중! ';
+        serverResponse = '지금은 통신 중이 아니에요...\n 속닥이가 다시 연결 중!';
         isFirstMessage = false;
       });
+      print('❌ 예외 발생: $e');
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    String currentEmotion = 'happy'; // 기본 감정 상태
-    final size = MediaQuery.of(context).size;
-
     return Scaffold(
       extendBodyBehindAppBar: true,
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: const CustomHeader(),
       body: Stack(
         children: [
-          // ✅ 배경 이미지는 SafeArea 바깥에서 전체 화면에 깔기
           Positioned.fill(
             child: Image.asset(
               'assets/images/moving_happy4.gif',
-              // 'assets/back/${currentEmotion}_back.png',
               fit: BoxFit.cover,
             ),
           ),
-
-          // ✅ SafeArea 안에 콘텐츠
-          // ✅ SafeArea 안에 콘텐츠
           SafeArea(
             child: Stack(
               children: [
-                // ✅ 🎈 말풍선 위치 고정
-                Positioned(
-                  top: 0, // ← 여기를 조절해서 더 위로 올릴 수 있음
-                  left: 0,
-                  right: 0,
-                  child: Center(
-                    child: CloudBubbleSvg(
-                      text: isFirstMessage
-                          ? '안녕 ${Config.nickname.isNotEmpty ? Config.nickname : '속닥'}!\n오늘 하루는 어땠어??'
-                          : serverResponse,
-                      maxWidth: size.width * 0.9,
-                      extraHorizontal: 160,
-                      extraVertical: 150,
-                      bubbleColor: Colors.white,
-                      style: const TextStyle(fontSize: 20, color: Colors.black),
-                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+                Padding(
+                  padding: const EdgeInsets.only(top: 30),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 40),
+                    child: Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(
+                        vertical: 20,
+                        horizontal: 20,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(20),
+                        boxShadow: const [
+                          BoxShadow(
+                            color: Colors.black12,
+                            blurRadius: 6,
+                            offset: Offset(0, 3),
+                          ),
+                        ],
+                      ),
+                      child: Text(
+                        isFirstMessage
+                            ? '안녕 ${Config.nickname.isNotEmpty ? Config.nickname : '속닥'}!\n오늘 하루는 어땠어??'
+                            : serverResponse,
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(fontSize: 20),
+                      ),
                     ),
                   ),
                 ),
-
-                // ✅ 기존 콘텐츠는 아래로 정렬되도록 Column 유지
-                Padding(
-                  padding: const EdgeInsets.only(top: 0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      const SizedBox(height: 250), // 캐릭터와 말풍선 사이 간격 조절
-                      const SizedBox(height: 8),
-
-                      // 캐릭터 이미지
-                      // SizedBox(
-                      //   height: 330,
-                      //   child: Center(
-                      //     child: Image.asset(
-                      //       'assets/images/${currentEmotion}.png',
-                      //       fit: BoxFit.contain,
-                      //     ),
-                      //   ),
-                      // ),
-                      const SizedBox(height: 40),
-                    ],
-                  ),
-                ),
-
-
-                // 🎤 Lottie 애니메이션
                 if (isListening)
                   Align(
                     alignment: Alignment.bottomCenter,
@@ -211,8 +213,6 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
                     ),
                   ),
-
-                // 🎤 마이크 버튼
                 Align(
                   alignment: Alignment.bottomCenter,
                   child: Padding(
@@ -275,5 +275,22 @@ class _HomeScreenState extends State<HomeScreen> {
         ],
       ),
     );
+  }
+}
+
+String getColorCodeByEmotionSeq(int seq) {
+  switch (seq) {
+    case 1:
+      return '#FFD700'; // 기쁨
+    case 2:
+      return '#FFA500'; // 불안
+    case 3:
+      return '#1E90FF'; // 슬픔
+    case 4:
+      return '#32CD32'; // 평온
+    case 5:
+      return '#FF4500'; // 분노
+    default:
+      return '#FFFFFF'; // 기본 (흰색)
   }
 }

@@ -51,6 +51,11 @@ dependencies:
   timezone: ^0.9.2
   flutter_timezone: ^4.1.1
   permission_handler: ^12.0.0+1
+  uni_links: ^0.5.1
+  flutter_bluetooth_serial:
+    git:
+      url: https://github.com/dngus1390/flutter_bluetooth_serial.git
+      ref: master
 #  uni_links: ^0.6.1
 #  uni_links3: ^0.5.3
 #  speech_to_text:

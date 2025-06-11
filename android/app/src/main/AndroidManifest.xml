@@ -9,6 +9,8 @@
         android:name="android.permission.POST_NOTIFICATIONS"
         tools:targetApi="33" />
 
+
+
     <application
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher"
