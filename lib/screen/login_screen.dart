@@ -1,3 +1,4 @@
+// lib/screen/login_screen.dart
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
@@ -39,10 +40,6 @@ class _LoginScreenState extends State<LoginScreen> {
 
     final url = Uri.parse('${Config.baseUrl}/api/auth/login/local');
     final requestBody = jsonEncode({'email': email, 'password': password});
-
-    print('📤 보내는 body: $requestBody');
-    print('➡️ 요청 URL: $url');
-
     try {
       final response = await http.post(
         url,
@@ -50,25 +47,22 @@ class _LoginScreenState extends State<LoginScreen> {
         body: requestBody,
       );
 
-      print('응답 코드: ${response.statusCode}');
-      print('응답 내용: ${response.body}');
-
       if (response.statusCode == 200) {
         final decoded = utf8.decode(response.bodyBytes);
         final data = jsonDecode(decoded);
 
-        print('✅ 로그인 응답 전체: $data');
-        print('👉 member_seq: ${data['member_seq']}');
-        print('👉 nickname: ${data['nickname']}');
+        final accessToken = data['access_token'] as String;
+        final refreshToken = data['refresh_token'] as String? ?? '';
+        final nickname = data['nickname'] as String?;
+        final memberSeq = data['member_seq'] as int;
 
-        final accessToken = data['access_token'];
-        final nickname = data['nickname'];
-        final memberSeq = data['member_seq'];
-        final email = _emailController.text.trim();
-
-        Config.accessToken = accessToken;
-        Config.memberSeq = memberSeq;
-        Config.nickname = nickname ?? '';
+        // SharedPreferences와 메모리에 동시 저장
+        await Config.saveAuth(
+          seq: memberSeq,
+          nick: nickname ?? '',
+          access: accessToken,
+          refresh: refreshToken,
+        );
 
         if (nickname == null || nickname.isEmpty || nickname == email) {
           _showMessage('닉네임을 먼저 설정해주세요!');

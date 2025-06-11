@@ -65,7 +65,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> sendTextToServer(String text) async {
-    final uri = Uri.parse('${Config.baseUrl}/api/chatbot/stream');
+    final uri = Uri.parse('${Config.baseUrl}/api/chatbot/chat');
     print('📤 서버로 보낼 텍스트: $text');
 
     try {
