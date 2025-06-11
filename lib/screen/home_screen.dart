@@ -146,7 +146,7 @@ class _HomeScreenState extends State<HomeScreen> {
         children: [
           Positioned.fill(
             child: Image.asset(
-              'assets/images/moving_happy4.gif',
+              'assets/gif/fear3.gif',
               fit: BoxFit.cover,
             ),
           ),
@@ -156,7 +156,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 Padding(
                   padding: const EdgeInsets.only(top: 30),
                   child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 40),
+                    padding: const EdgeInsets.symmetric(horizontal: 50),
                     child: Container(
                       width: double.infinity,
                       padding: const EdgeInsets.symmetric(
@@ -165,7 +165,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
                       decoration: BoxDecoration(
                         color: Colors.white,
-                        borderRadius: BorderRadius.circular(20),
+                        borderRadius: BorderRadius.circular(30),
                         boxShadow: const [
                           BoxShadow(
                             color: Colors.black12,
