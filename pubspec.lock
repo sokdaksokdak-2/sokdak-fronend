@@ -150,6 +150,15 @@ packages:
     description: flutter
     source: sdk
     version: "0.0.0"
+  flutter_bluetooth_serial:
+    dependency: "direct main"
+    description:
+      path: "."
+      ref: master
+      resolved-ref: "64190f9036db6d929b858c4ba5c9903dfa4f37cc"
+      url: "https://github.com/dngus1390/flutter_bluetooth_serial.git"
+    source: git
+    version: "0.4.0"
   flutter_lints:
     dependency: "direct dev"
     description:

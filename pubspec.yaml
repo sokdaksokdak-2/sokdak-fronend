@@ -53,6 +53,10 @@ dependencies:
   permission_handler: ^12.0.0+1
   flutter_riverpod: ^2.4.0
   collection: ^1.18.0
+  flutter_bluetooth_serial:
+    git:
+      url: https://github.com/dngus1390/flutter_bluetooth_serial.git
+      ref: master
 #  uni_links: ^0.6.1
 #  uni_links3: ^0.5.3
 #  speech_to_text:

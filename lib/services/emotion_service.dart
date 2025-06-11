@@ -53,11 +53,13 @@ class EmotionService {
 
     return (response.data as List).map<EmotionRecord>((item) {
       return EmotionRecord(
-        emotion: item['character_image_url'],
-        title: '',
-        content: item['context'] ?? '',
+        emotion: item['character_image_url'] ?? '', // null이면 빈 문자열
+        title: item['title'] ?? '',                 // null이면 빈 문자열
+        content: item['context'] ?? '',             // null이면 빈 문자열
+        seq: item['calendar_seq'],                  // 필요시 null도 OK
       );
     }).toList();
+
   }
 
 

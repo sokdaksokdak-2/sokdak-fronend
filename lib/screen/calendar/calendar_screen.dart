@@ -22,7 +22,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
   DateTime? _selectedDay;
 
   /// 월별 요약: 날짜 → emotionSeq(1~5)
-  Map<DateTime, int> _monthlySummary = {};
+  Map<DateTime, int?> _monthlySummary = {};
 
   /// 일별 상세: 날짜 → EmotionRecord 목록
   Map<DateTime, List<EmotionRecord>> _dailyRecords = {};
@@ -164,14 +164,14 @@ class _CalendarScreenState extends State<CalendarScreen> {
 
   /* ───────────────── 셀 하단 감정 아이콘 ───────────────── */
   Widget _buildEmotionForDay(DateTime day) {
-    final seq = _monthlySummary[day];
+    final seq = _monthlySummary[DateUtils.dateOnly(day)];
     if (seq == null) {
       return Image.asset('assets/emotions/none.png', width: 35, height: 35);
     }
     return Image.asset(
       emotionAsset(seq), // 💎 새 헬퍼로 바로 경로 변환
-      width: 28,
-      height: 28,
+      width: 40,
+      height: 40,
     );
   }
 
