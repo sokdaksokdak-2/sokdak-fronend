@@ -1,7 +1,9 @@
 import 'package:dio/dio.dart';
 import 'package:sdsd/config.dart';
+import '../models/emotion_calendar_summary.dart';
 import '../models/emotion_record.dart';
 
+/// 💡 여기 상수를 다시 넣어 줍니다 ────────────────────────────
 const Map<String, int> emotionSeqMap = {
   'cropped_angry': 1,
   'cropped_fear': 2,
@@ -9,19 +11,18 @@ const Map<String, int> emotionSeqMap = {
   'cropped_sad': 4,
   'cropped_soso': 5,
 };
+/// ──────────────────────────────────────────────────────────
 
+/// 감정 관련 네트워크 요청 모음
 class EmotionService {
-  static Future<Map<DateTime, List<EmotionRecord>>> fetchMonthlySummary(
-    DateTime targetMonth,
-  ) async {
-    final year = targetMonth.year;
-    final month = targetMonth.month;
-
+  // ───────────────── 월별 요약 ─────────────────
+  static Future<List<EmotionCalendarSummary>> fetchMonthlySummary(
+      DateTime targetMonth) async {
     final response = await Dio().get(
       '${Config.baseUrl}/api/emo_calendar/monthly_summary',
       queryParameters: {
-        'year': year,
-        'month': month,
+        'year': targetMonth.year,
+        'month': targetMonth.month,
         'member_seq': Config.memberSeq,
       },
       options: Options(
@@ -29,18 +30,12 @@ class EmotionService {
       ),
     );
 
-    final Map<DateTime, List<EmotionRecord>> result = {};
-
-    for (var item in response.data) {
-      final date = DateTime.parse(item['calendar_date']);
-      final imageUrl = item['character_image_url'];
-
-      result[date] = [EmotionRecord(emotion: imageUrl, title: '', content: '')];
-    }
-
-    return result;
+    return (response.data as List)
+        .map((e) => EmotionCalendarSummary.fromJson(e))
+        .toList();
   }
 
+  // ───────────────── 일별 조회 ─────────────────
   static Future<List<EmotionRecord>> fetchDailyEmotions(DateTime date) async {
     final dateStr =
         '${date.year.toString().padLeft(4, '0')}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
@@ -56,7 +51,7 @@ class EmotionService {
       ),
     );
 
-    return response.data.map<EmotionRecord>((item) {
+    return (response.data as List).map<EmotionRecord>((item) {
       return EmotionRecord(
         emotion: item['character_image_url'],
         title: '',
@@ -64,6 +59,7 @@ class EmotionService {
       );
     }).toList();
   }
+
 
   static Future<EmotionRecord> analyzeAndSave({
     required DateTime date,

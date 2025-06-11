@@ -1,12 +1,14 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:table_calendar/table_calendar.dart';
+
 import '../../widgets/custom_header.dart';
 import '../../models/emotion_record.dart';
 import '../../widgets/emotion_input_dialog.dart';
 import '../../widgets/emotion_record_viewer_dialog.dart';
 import '../../widgets/emotion_from_text_dialog.dart';
-import 'package:sdsd/services/emotion_service.dart';
+import '../../services/emotion_service.dart';
+import '../../utils/emotion_helper.dart'; // 💎 새 헬퍼 (seq→asset)
 
 class CalendarScreen extends StatefulWidget {
   const CalendarScreen({super.key});
@@ -19,32 +21,40 @@ class _CalendarScreenState extends State<CalendarScreen> {
   DateTime _focusedDay = DateTime.now();
   DateTime? _selectedDay;
 
-  Map<DateTime, List<EmotionRecord>> emotionRecords = {};
+  /// 월별 요약: 날짜 → emotionSeq(1~5)
+  Map<DateTime, int> _monthlySummary = {};
+
+  /// 일별 상세: 날짜 → EmotionRecord 목록
+  Map<DateTime, List<EmotionRecord>> _dailyRecords = {};
 
   @override
   void initState() {
     super.initState();
-    _loadMonthlyEmotions(_focusedDay);
+    _loadMonthlySummary(_focusedDay);
   }
 
-  Future<void> _loadMonthlyEmotions(DateTime month) async {
+  /* ───────────────── 월별 요약 로딩 ───────────────── */
+  Future<void> _loadMonthlySummary(DateTime month) async {
     try {
-      final data = await EmotionService.fetchMonthlySummary(month);
+      final summaries = await EmotionService.fetchMonthlySummary(month);
       setState(() {
-        emotionRecords = data;
+        _monthlySummary = {
+          for (final s in summaries) DateUtils.dateOnly(s.date): s.emotionSeq,
+        };
       });
     } catch (e) {
       print('월별 감정 로딩 실패: $e');
     }
   }
 
+  /* ───────────────── 일별 상세 로딩 ───────────────── */
   Future<void> _loadDailyEmotions(DateTime date) async {
     try {
       final records = await EmotionService.fetchDailyEmotions(date);
 
       if (records.isNotEmpty) {
         setState(() {
-          emotionRecords[date] = records;
+          _dailyRecords[date] = records;
         });
         _showEmotionRecordViewer(date, records);
       } else {
@@ -56,12 +66,9 @@ class _CalendarScreenState extends State<CalendarScreen> {
     }
   }
 
+  /* ───────────────── 날짜 선택 ───────────────── */
   void _onDaySelected(DateTime selectedDay, DateTime focusedDay) {
-    final dateOnly = DateTime(
-      selectedDay.year,
-      selectedDay.month,
-      selectedDay.day,
-    );
+    final dateOnly = DateUtils.dateOnly(selectedDay);
     setState(() {
       _selectedDay = dateOnly;
       _focusedDay = focusedDay;
@@ -69,15 +76,16 @@ class _CalendarScreenState extends State<CalendarScreen> {
     _loadDailyEmotions(dateOnly);
   }
 
+  /* ───────────────── 입력 다이얼로그 ───────────────── */
   void _showEmotionInputDialog(DateTime date, {int? existingIndex}) {
-    final existingList = emotionRecords[date];
+    final existingList = _dailyRecords[date];
     final existingRecord =
-    (existingIndex != null &&
-        existingList != null &&
-        existingIndex >= 0 &&
-        existingIndex < existingList.length)
-        ? existingList[existingIndex]
-        : null;
+        (existingIndex != null &&
+                existingList != null &&
+                existingIndex >= 0 &&
+                existingIndex < existingList.length)
+            ? existingList[existingIndex]
+            : null;
 
     showDialog(
       context: context,
@@ -93,13 +101,13 @@ class _CalendarScreenState extends State<CalendarScreen> {
             existingRecord: existingRecord,
             onSave: (_) async {
               Navigator.pop(context); // 다이얼로그 닫기
-
-              await Future.delayed(const Duration(milliseconds: 300)); // 안정성 확보
+              await Future.delayed(const Duration(milliseconds: 300));
+              await _loadMonthlySummary(_focusedDay);
 
               try {
                 final updated = await EmotionService.fetchDailyEmotions(date);
                 setState(() {
-                  emotionRecords[date] = updated;
+                  _dailyRecords[date] = updated;
                 });
               } catch (e) {
                 print("❗ 저장 후 감정 재불러오기 실패: $e");
@@ -111,7 +119,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
     );
   }
 
-
+  /* ───────────────── 기록 뷰어 다이얼로그 ───────────────── */
   void _showEmotionRecordViewer(DateTime date, List<EmotionRecord> records) {
     showDialog(
       context: context,
@@ -131,15 +139,15 @@ class _CalendarScreenState extends State<CalendarScreen> {
               }
 
               setState(() {
-                emotionRecords[date]!.removeAt(index);
-                if (emotionRecords[date]!.isEmpty) {
-                  emotionRecords.remove(date);
+                _dailyRecords[date]!.removeAt(index);
+                if (_dailyRecords[date]!.isEmpty) {
+                  _dailyRecords.remove(date);
                 }
               });
 
               Navigator.pop(context);
 
-              final updated = emotionRecords[date];
+              final updated = _dailyRecords[date];
               if (updated != null && updated.isNotEmpty) {
                 Future.delayed(const Duration(milliseconds: 100), () {
                   _showEmotionRecordViewer(date, updated);
@@ -154,25 +162,20 @@ class _CalendarScreenState extends State<CalendarScreen> {
     );
   }
 
+  /* ───────────────── 셀 하단 감정 아이콘 ───────────────── */
   Widget _buildEmotionForDay(DateTime day) {
-    final records = emotionRecords[day];
-    final first = records?.isNotEmpty == true ? records!.first : null;
-
-    if (first == null) {
+    final seq = _monthlySummary[day];
+    if (seq == null) {
       return Image.asset('assets/emotions/none.png', width: 35, height: 35);
     }
-
-    if (first.emotion.startsWith('http')) {
-      return Image.network(first.emotion, width: 35, height: 35);
-    }
-
     return Image.asset(
-      'assets/emotions/${first.emotion}.png',
+      emotionAsset(seq), // 💎 새 헬퍼로 바로 경로 변환
       width: 28,
       height: 28,
     );
   }
 
+  /* ───────────────── 날짜 셀 빌더 ───────────────── */
   Widget _buildDayCell(DateTime day, bool isSelected) {
     return Column(
       mainAxisAlignment: MainAxisAlignment.center,
@@ -202,13 +205,15 @@ class _CalendarScreenState extends State<CalendarScreen> {
     );
   }
 
+  /* ───────────────── 월 이동 ───────────────── */
   void _moveMonth(int offset) {
     setState(() {
       _focusedDay = DateTime(_focusedDay.year, _focusedDay.month + offset);
     });
-    _loadMonthlyEmotions(_focusedDay);
+    _loadMonthlySummary(_focusedDay);
   }
 
+  /* ───────────────── UI ───────────────── */
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -227,6 +232,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
               child: SingleChildScrollView(
                 child: Column(
                   children: [
+                    /* ─── 상단 년/월 헤더 ─── */
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 24),
                       child: Stack(
@@ -265,6 +271,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                       ),
                     ),
                     const SizedBox(height: 8),
+                    /* ─── 캘린더 ─── */
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 16),
                       child: TableCalendar(
@@ -280,10 +287,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                             (day) => isSameDay(day, _selectedDay),
                         onDaySelected: _onDaySelected,
                         daysOfWeekStyle: const DaysOfWeekStyle(
-                          weekdayStyle: TextStyle(
-                            fontSize: 18,
-                            // fontWeight: FontWeight.bold,
-                          ),
+                          weekdayStyle: TextStyle(fontSize: 18),
                           weekendStyle: TextStyle(
                             fontSize: 18,
                             fontWeight: FontWeight.bold,

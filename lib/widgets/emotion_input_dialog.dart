@@ -26,9 +26,9 @@ class _EmotionInputDialogState extends State<EmotionInputDialog> {
   late TextEditingController contentController;
 
   final Map<String, int> emotionMap = {
-    'cropped_happy': 1,
+    'cropped_angry': 1,
     'cropped_fear': 2,
-    'cropped_angry': 3,
+    'cropped_happy': 3,
     'cropped_sad': 4,
     'cropped_soso': 5,
   };
@@ -258,23 +258,31 @@ class _EmotionInputDialogState extends State<EmotionInputDialog> {
                       ).format(widget.date);
 
                       try {
-                        final record = EmotionRecord(
-                          seq: widget.existingRecord?.seq,
-                          emotion: selectedEmotion!,
-                          title: title,
-                          content: content,
-                        );
+                        if (widget.existingRecord?.seq != null) {
+                          await EmotionService.updateEmotionRecord(
+                            calendarSeq: widget.existingRecord!.seq!,
+                            title: title,
+                            content: content,
+                            emotion: selectedEmotion!,
+                          );
+                        } else {
+                          await EmotionService.createEmotionManually(
+                            memberSeq: Config.memberSeq,
+                            calendarDate: formattedDate,
+                            title: title,
+                            context: content,
+                            emotionSeq: emotionSeq!,
+                          );
+                        }
 
-                        await EmotionService.createEmotionManually(
-                          memberSeq: Config.memberSeq,
-                          // TODO: Replace with actual user ID
-                          calendarDate: formattedDate,
-                          title: title,
-                          context: content,
-                          emotionSeq: emotionSeq!,
+                        widget.onSave(
+                          EmotionRecord(
+                            seq: widget.existingRecord?.seq,
+                            emotion: selectedEmotion!,
+                            title: title,
+                            content: content,
+                          ),
                         );
-
-                        widget.onSave(record);
                         Navigator.pop(context);
                       } catch (e) {
                         print('감정 저장 실패: ${e.toString()}');
