@@ -287,7 +287,7 @@ String getColorCodeByEmotionSeq(int seq) {
     case 3:
       return '#E53EF2'; // 불안 (보라)
     case 4:
-      return '#960018'; // 화남 (빨강)
+      return '#960018'; // 화남 (핑크)
     case 5:
       return '#32CD32'; // 평온 (연녹)
     default:
