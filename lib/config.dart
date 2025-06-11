@@ -1,14 +1,16 @@
-// lib/config.dart
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/foundation.dart';
 
 class Config {
   // ✅ 개발 중엔 이걸 사용
+
   static const String baseUrl = 'http://192.168.219.159:8000';
+
 
   // 로그인 후 저장되는 값
   static int memberSeq = -1;
   static String nickname = '';
+  static String email = ''; // ✅ 추가
   static String accessToken = '';
   static String refreshToken = '';
 
@@ -23,6 +25,7 @@ class Config {
     final prefs = await SharedPreferences.getInstance();
     memberSeq = prefs.getInt('memberSeq') ?? -1;
     nickname = prefs.getString('nickname') ?? '';
+    email = prefs.getString('email') ?? ''; // ✅ 추가
     accessToken = prefs.getString('accessToken') ?? '';
     refreshToken = prefs.getString('refreshToken') ?? '';
     lastOAuthLink = prefs.getString('lastOAuthLink') ?? '';
@@ -33,19 +36,24 @@ class Config {
   static Future<void> saveAuth({
     required int seq,
     required String nick,
+    required String emailAddr, // ✅ 추가
     required String access,
     required String refresh,
   }) async {
     memberSeq = seq;
     nickname = nick;
+    email = emailAddr; // ✅ 저장
     accessToken = access;
     refreshToken = refresh;
 
-    debugPrint('✅ saveAuth: access=$access, refresh=$refresh'); // ✅ 추가
+    debugPrint(
+      '✅ saveAuth: access=$access, refresh=$refresh, email=$emailAddr',
+    );
 
     final prefs = await SharedPreferences.getInstance();
     await prefs.setInt('memberSeq', seq);
     await prefs.setString('nickname', nick);
+    await prefs.setString('email', emailAddr); // ✅ 저장
     await prefs.setString('accessToken', access);
     await prefs.setString('refreshToken', refresh);
   }
@@ -54,6 +62,7 @@ class Config {
   static Future<void> clear() async {
     memberSeq = -1;
     nickname = '';
+    email = ''; // ✅ 초기화
     accessToken = '';
     refreshToken = '';
     lastOAuthLink = '';
@@ -62,6 +71,7 @@ class Config {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove('memberSeq');
     await prefs.remove('nickname');
+    await prefs.remove('email'); // ✅ 삭제
     await prefs.remove('accessToken');
     await prefs.remove('refreshToken');
     await prefs.remove('lastOAuthLink');

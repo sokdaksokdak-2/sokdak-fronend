@@ -48,6 +48,8 @@ class _LoginScreenState extends State<LoginScreen> {
       );
 
       if (response.statusCode == 200) {
+        debugPrint('🔍 로그인 응답: ${response.body}');
+
         final decoded = utf8.decode(response.bodyBytes);
         final data = jsonDecode(decoded);
 
@@ -55,11 +57,13 @@ class _LoginScreenState extends State<LoginScreen> {
         final refreshToken = data['refresh_token'] as String? ?? '';
         final nickname = data['nickname'] as String?;
         final memberSeq = data['member_seq'] as int;
+        final emailFromServer = data['email'] as String? ?? '';
 
         // SharedPreferences와 메모리에 동시 저장
         await Config.saveAuth(
           seq: memberSeq,
           nick: nickname ?? '',
+          emailAddr: emailFromServer, // ✅ 수정
           access: accessToken,
           refresh: refreshToken,
         );

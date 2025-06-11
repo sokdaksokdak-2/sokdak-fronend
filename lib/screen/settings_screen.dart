@@ -14,13 +14,13 @@ import 'package:sdsd/screen/settings/privacy_policy_screen.dart';
 import 'package:sdsd/screen/settings/terms_of_service_screen.dart';
 import 'package:sdsd/screen/settings/theme_setting_screen.dart';
 import 'package:sdsd/widgets/custom_header.dart';
+import 'package:sdsd/widgets/profile_card.dart';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
 
   // ───── 로그아웃 메인 로직 ──────────────────────────────────────────────
   Future<void> _logoutAndGoToIntro(BuildContext context) async {
-
     debugPrint('🧼 로그아웃 시작');
     debugPrint('🧼 로그아웃 전 accessToken: ${Config.accessToken}');
 
@@ -81,12 +81,15 @@ class SettingsScreen extends StatelessWidget {
                 style: TextStyle(fontSize: 18, color: Colors.black87),
               ),
               const SizedBox(height: 34),
+
               Expanded(
                 child: SingleChildScrollView(
                   padding: const EdgeInsets.symmetric(horizontal: 16),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      const ProfileCard(),
+                      const SizedBox(height: 12),
                       _buildCard(
                         context: context,
                         title: '내 정보 관리',
@@ -104,7 +107,7 @@ class SettingsScreen extends StatelessWidget {
                         title: '계정 관리',
                         items: ['로그아웃', '회원탈퇴'],
                       ),
-                      const SizedBox(height: 24),
+                      const SizedBox(height: 20),
                     ],
                   ),
                 ),

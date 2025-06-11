@@ -213,7 +213,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-      appBar: const CustomHeader(showBackButton: true),
+      appBar: const CustomHeader(showBackButton: false),
       body: SafeArea(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.center,
