@@ -24,7 +24,7 @@ class _IntroScreenState extends State<IntroScreen> {
   final List<Map<String, String>> pages = [
     {
       'title': '안녕!\n오늘부터 우리랑 이야기 나눠볼래?',
-      'image': 'assets/gif_slow/angry1_slow_1_5x.gif',
+      'image': 'assets/images/team.png',
       'description': '마음을 나누고,\n위로와 웃음을 함께 받아보세요',
     },
     {

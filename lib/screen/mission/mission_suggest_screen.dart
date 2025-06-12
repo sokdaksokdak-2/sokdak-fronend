@@ -30,20 +30,23 @@ class MissionSuggestScreen extends StatelessWidget {
           children: [
             Positioned.fill(
               child: Image.asset(
-                '${backPath}${currentEmotion}_back.png',
-                fit: BoxFit.fill,
+                'assets/gif_1_1x/sad3_1_1x.gif',
+                // 'assets/gif/sad3.gif',
+                // 'assets/gif_1_2x/sad3_1_2.gif',
+                // '${backPath}${currentEmotion}_back.png',
+                fit: BoxFit.cover,
               ),
             ),
-            Positioned(
-              left: 0,
-              right: 0,
-              bottom: 50,
-              child: Image.asset(
-                'assets/images/$currentEmotion.png',
-                height: 330,
-                fit: BoxFit.contain,
-              ),
-            ),
+            // Positioned(
+            //   left: 0,
+            //   right: 0,
+            //   bottom: 50,
+            //   child: Image.asset(
+            //     'assets/images/$currentEmotion.png'
+            //     height: 330,
+            //     fit: BoxFit.contain,
+            //   ),
+            // ),
             Padding(
               padding: EdgeInsets.only(
                 top: MediaQuery.of(context).padding.top + headerHeight,
@@ -59,7 +62,7 @@ class MissionSuggestScreen extends StatelessWidget {
                     padding: const EdgeInsets.symmetric(horizontal: 50),
                     child: Container(
                       padding: const EdgeInsets.symmetric(
-                        vertical: 30,
+                        vertical: 20,
                         horizontal: 20,
                       ),
                       decoration: BoxDecoration(
@@ -74,7 +77,7 @@ class MissionSuggestScreen extends StatelessWidget {
                         ],
                       ),
                       child: const Text(
-                        '으~~ 듣는 내가 다 화나네\n열도 식힐 겸\n산책 한바퀴 어때?\n내가 신나는 노래 추천해줄게!',
+                        '으~~ 듣는 내가 다 화나네\n열도 식힐 겸\n산책 한바퀴 어때?',
                         style: TextStyle(fontSize: 20),
                         textAlign: TextAlign.center,
                       ),
