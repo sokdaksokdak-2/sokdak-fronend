@@ -1,15 +1,33 @@
+// lib/models/emotion_record.dart
 class EmotionRecord {
-  final int? seq; // ✅ optional, 새로 만들 땐 null일 수도 있음
-  final String emotion;
+  final int    seq;          // detail_seq – 삭제·수정 PK
+  final int    emotionSeq;   // 1‒5
   final String title;
   final String content;
-  // final String intensity; // ✅ 추가됨: 약함 / 보통 / 강함 중 하나
+  final DateTime calendarDate; // yyyy-MM-dd → DateTime
 
   EmotionRecord({
-    this.seq,
-    required this.emotion,
+    required this.seq,
+    required this.emotionSeq,
     required this.title,
     required this.content,
-    // required this.intensity,
+    required this.calendarDate,
   });
+
+  factory EmotionRecord.fromJson(Map<String, dynamic> json) => EmotionRecord(
+    seq          : json['detail_seq']      as int,
+    emotionSeq   : json['emotion_seq']     as int,
+    title        : json['title']           ?? '',
+    content      : json['context']         ?? '',
+    calendarDate : DateTime.parse(json['calendar_date']),
+  );
+
+  /// 필요 시 서버로 다시 보낼 때 사용
+  Map<String, dynamic> toJson() => {
+    'detail_seq'    : seq,
+    'emotion_seq'   : emotionSeq,
+    'title'         : title,
+    'context'       : content,
+    'calendar_date' : calendarDate.toIso8601String().split('T').first,
+  };
 }

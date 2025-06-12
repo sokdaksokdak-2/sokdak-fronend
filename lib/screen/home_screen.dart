@@ -9,8 +9,12 @@ import 'package:sdsd/widgets/custom_header.dart';
 import 'package:sdsd/utils/bluetooth_controller_serial.dart';
 
 class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key});
+  final DateTime date;           // ✅ 새 필드
 
+  const HomeScreen({
+    super.key,
+    DateTime? date,                    // 🔄 nullable·옵션
+  }) : date = date ?? DateTime.now();  // 🔄 기본값: 오늘
   @override
   State<HomeScreen> createState() => _HomeScreenState();
 }
@@ -24,6 +28,7 @@ class _HomeScreenState extends State<HomeScreen> {
   String serverResponse = '';
   Map<DateTime, List<EmotionRecord>> emotionRecords = {};
   int? _previousEmotionSeq;
+  DateTime? _selectedDay;                // 사용자가 화면에서 선택할 때 갱신
 
   @override
   void initState() {
@@ -104,17 +109,22 @@ class _HomeScreenState extends State<HomeScreen> {
           isFirstMessage = false;
         });
 
-        final now = DateTime.now();
-        final key = DateTime(now.year, now.month, now.day);
+        // ── 1️⃣ 오늘 기준 날짜를 DateOnly 형태로 얻기 ──
+        final DateTime picked = _selectedDay ?? widget.date;            // widget.date = 기본 날짜
+        final DateTime key    = DateTime(picked.year, picked.month, picked.day);
 
         if (emotionSeq != null) {
           final record = EmotionRecord(
-            emotion: 'assets/emotions/${emotionSeq}_emoji.png',
-            title: '감정 분석 기록',
-            content: chatbotMessage,
+            seq         : 0,                    // ✅ 임시 PK (서버 저장 후 재조회하면 실제 detail_seq 로 교체)
+            emotionSeq  : emotionSeq,           // 1‒5
+            title       : '감정 분석 기록',
+            content     : chatbotMessage,
+            calendarDate: picked,  // ✅ 혹은 _focusedDay
           );
 
-          setState(() {
+
+
+        setState(() {
             emotionRecords.putIfAbsent(key, () => []).add(record);
           });
 

@@ -1,3 +1,4 @@
+// lib/widgets/emotion_input_dialog.dart
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:sdsd/config.dart';
@@ -21,11 +22,12 @@ class EmotionInputDialog extends StatefulWidget {
 }
 
 class _EmotionInputDialogState extends State<EmotionInputDialog> {
-  String? selectedEmotion;
+  String? selectedEmotion; // 예: 'cropped_angry'
   late TextEditingController titleController;
   late TextEditingController contentController;
 
-  final Map<String, int> emotionMap = {
+  /// 감정 키 ↔︎ emotion_seq 매핑
+  static const Map<String, int> _emotionMap = {
     'cropped_angry': 1,
     'cropped_fear': 2,
     'cropped_happy': 3,
@@ -36,7 +38,18 @@ class _EmotionInputDialogState extends State<EmotionInputDialog> {
   @override
   void initState() {
     super.initState();
-    selectedEmotion = widget.existingRecord?.emotion;
+
+    // 기존 레코드가 있으면 emotionSeq → 키 역매핑
+    selectedEmotion =
+        widget.existingRecord != null
+            ? _emotionMap.entries
+                .firstWhere(
+                  (e) => e.value == widget.existingRecord!.emotionSeq,
+                  orElse: () => const MapEntry('cropped_soso', 5),
+                )
+                .key
+            : null;
+
     titleController = TextEditingController(
       text: widget.existingRecord?.title ?? '',
     );
@@ -71,7 +84,7 @@ class _EmotionInputDialogState extends State<EmotionInputDialog> {
 
   @override
   Widget build(BuildContext context) {
-    final emotions = [
+    const emotions = [
       'cropped_happy',
       'cropped_fear',
       'cropped_angry',
@@ -91,12 +104,14 @@ class _EmotionInputDialogState extends State<EmotionInputDialog> {
           mainAxisSize: MainAxisSize.min,
           children: [
             const SizedBox(height: 22),
-            const Padding(
-              padding: EdgeInsets.only(left: 8),
-              child: Align(
-                alignment: Alignment.centerLeft,
+
+            // ───────── 감정 선택 ─────────
+            const Align(
+              alignment: Alignment.centerLeft,
+              child: Padding(
+                padding: EdgeInsets.only(left: 8),
                 child: Text(
-                  "기분 어때?",
+                  '기분 어때?',
                   style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
                 ),
               ),
@@ -137,7 +152,6 @@ class _EmotionInputDialogState extends State<EmotionInputDialog> {
                                           isSelected
                                               ? FontWeight.bold
                                               : FontWeight.normal,
-                                      color: Colors.black,
                                     ),
                                   ),
                                 ],
@@ -152,151 +166,42 @@ class _EmotionInputDialogState extends State<EmotionInputDialog> {
 
             const SizedBox(height: 25),
 
-            const Padding(
-              padding: EdgeInsets.only(left: 8),
-              child: Align(
-                alignment: Alignment.centerLeft,
-                child: Text(
-                  "제목",
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-                ),
-              ),
-            ),
+            // ───────── 제목 ─────────
+            _fieldLabel('제목'),
             const SizedBox(height: 8),
             TextField(
               controller: titleController,
-              style: const TextStyle(fontSize: 14),
-              decoration: InputDecoration(
-                filled: true,
-                fillColor: Colors.white,
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 14,
-                ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide.none,
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: const BorderSide(color: Colors.green),
-                ),
-              ),
+              decoration: _inputDecoration(),
             ),
 
             const SizedBox(height: 25),
 
-            const Padding(
-              padding: EdgeInsets.only(left: 8),
-              child: Align(
-                alignment: Alignment.centerLeft,
-                child: Text(
-                  "내용",
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-                ),
-              ),
-            ),
+            // ───────── 내용 ─────────
+            _fieldLabel('내용'),
             const SizedBox(height: 8),
             TextField(
               controller: contentController,
               maxLines: 6,
-              style: const TextStyle(fontSize: 14),
-              decoration: InputDecoration(
-                filled: true,
-                fillColor: Colors.white,
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 14,
-                ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide.none,
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: const BorderSide(color: Colors.green),
-                ),
-              ),
+              decoration: _inputDecoration(),
             ),
 
             const SizedBox(height: 20),
 
+            // ───────── 버튼 ─────────
             Row(
               children: [
                 Expanded(
                   child: ElevatedButton(
                     onPressed: () => Navigator.pop(context),
-                    style: ElevatedButton.styleFrom(
-                      minimumSize: Size.zero,
-                      backgroundColor: Colors.white,
-                      foregroundColor: Colors.black,
-                      padding: const EdgeInsets.symmetric(vertical: 8),
-                      elevation: 0,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        side: const BorderSide(color: Colors.black12),
-                      ),
-                    ),
+                    style: _cancelStyle(),
                     child: const Text('취소', style: TextStyle(fontSize: 14)),
                   ),
                 ),
                 const SizedBox(width: 20),
                 Expanded(
                   child: ElevatedButton(
-                    onPressed: () async {
-                      final title = titleController.text.trim();
-                      final content = contentController.text.trim();
-
-                      if (selectedEmotion == null ||
-                          title.isEmpty ||
-                          content.isEmpty)
-                        return;
-
-                      final emotionSeq = emotionMap[selectedEmotion];
-                      final formattedDate = DateFormat(
-                        'yyyy-MM-dd',
-                      ).format(widget.date);
-
-                      try {
-                        if (widget.existingRecord?.seq != null) {
-                          await EmotionService.updateEmotionRecord(
-                            calendarSeq: widget.existingRecord!.seq!,
-                            title: title,
-                            content: content,
-                            emotion: selectedEmotion!,
-                          );
-                        } else {
-                          await EmotionService.createEmotionManually(
-                            memberSeq: Config.memberSeq,
-                            calendarDate: formattedDate,
-                            title: title,
-                            context: content,
-                            emotionSeq: emotionSeq!,
-                          );
-                        }
-
-                        widget.onSave(
-                          EmotionRecord(
-                            seq: widget.existingRecord?.seq,
-                            emotion: selectedEmotion!,
-                            title: title,
-                            content: content,
-                          ),
-                        );
-                        Navigator.pop(context);
-                      } catch (e) {
-                        print('감정 저장 실패: ${e.toString()}');
-                      }
-                    },
-                    style: ElevatedButton.styleFrom(
-                      minimumSize: Size.zero,
-                      backgroundColor: Colors.green,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 8),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
+                    onPressed: _save,
+                    style: _saveStyle(),
                     child: const Text('저장', style: TextStyle(fontSize: 14)),
                   ),
                 ),
@@ -307,4 +212,97 @@ class _EmotionInputDialogState extends State<EmotionInputDialog> {
       ),
     );
   }
+
+  // ───────── 저장 로직 ─────────
+  Future<void> _save() async {
+    final title = titleController.text.trim();
+    final content = contentController.text.trim();
+
+    if (selectedEmotion == null || title.isEmpty || content.isEmpty) return;
+
+    final emotionSeq = _emotionMap[selectedEmotion]!;
+    final formattedDate = DateFormat('yyyy-MM-dd').format(widget.date);
+
+    try {
+      if (widget.existingRecord?.seq != null) {
+        // ─── 수정 ───
+        await EmotionService.updateEmotionRecord(
+          detailSeq: widget.existingRecord!.seq!,
+          memberSeq: Config.memberSeq,
+          emotionSeq: emotionSeq,
+          title: title,
+          content: content,
+        );
+      } else {
+        // ─── 신규 저장 ───
+        await EmotionService.createEmotionManually(
+          memberSeq: Config.memberSeq,
+          calendarDate: formattedDate,
+          title: title,
+          context: content,
+          emotionSeq: emotionSeq,
+        );
+      }
+
+      // ※ 인풋 다이얼로그 내부 예시
+      widget.onSave(
+        EmotionRecord(
+          seq         : widget.existingRecord?.seq ?? 0,   // 신규 기록이면 0(임시); 저장 후 다시 조회 시 실제 값으로 교체
+          emotionSeq  : emotionSeq,
+          title       : title,
+          content     : content,
+          calendarDate: widget.date,                       // 다이얼로그에 넘겨받은 해당 날짜(DateTime)
+        ),
+      );
+
+
+      Navigator.pop(context);
+    } catch (e) {
+      print('감정 저장 실패: $e');
+    }
+  }
+
+  // ───────── 공통 위젯/스타일 ─────────
+  Padding _fieldLabel(String text) => Padding(
+    padding: const EdgeInsets.only(left: 8),
+    child: Align(
+      alignment: Alignment.centerLeft,
+      child: Text(
+        text,
+        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+      ),
+    ),
+  );
+
+  InputDecoration _inputDecoration() => InputDecoration(
+    filled: true,
+    fillColor: Colors.white,
+    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+    enabledBorder: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(12),
+      borderSide: BorderSide.none,
+    ),
+    focusedBorder: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(12),
+      borderSide: const BorderSide(color: Colors.green),
+    ),
+  );
+
+  ButtonStyle _cancelStyle() => ElevatedButton.styleFrom(
+    backgroundColor: Colors.white,
+    foregroundColor: Colors.black,
+    padding: const EdgeInsets.symmetric(vertical: 8),
+    elevation: 0,
+    shape: RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(12),
+      side: const BorderSide(color: Colors.black12),
+    ),
+  );
+
+  ButtonStyle _saveStyle() => ElevatedButton.styleFrom(
+    backgroundColor: Colors.green,
+    foregroundColor: Colors.white,
+    padding: const EdgeInsets.symmetric(vertical: 8),
+    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+  );
 }
