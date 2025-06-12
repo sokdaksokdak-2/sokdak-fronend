@@ -36,7 +36,7 @@ class _NicknameSetupScreenState extends State<NicknameSetupScreen> {
 
     setState(() => _isLoading = true);
 
-    final url = Uri.parse('${Config.baseUrl}/api/member/nickname');
+    final url = Uri.parse('${Config.baseUrl}/api/members/nickname');
 
     try {
       final response = await http.put(
