@@ -17,13 +17,27 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   late stt.SpeechToText _speech;
-  BluetoothController? _bluetoothController; // ✅ nullable 처리
+  BluetoothController? _bluetoothController;
+
   bool isListening = false;
   bool isFirstMessage = true;
   String spokenText = '';
   String serverResponse = '';
   Map<DateTime, List<EmotionRecord>> emotionRecords = {};
   int? _previousEmotionSeq;
+
+  // 🎯 이미지 상태 변수
+  String backgroundImage = 'assets/back/happy_back.png';
+  String gifImage = 'assets/gif/happy1.gif';
+
+  // 감정 seq → 이름 매핑
+  final Map<int, String> emotionMap = {
+    1: 'happy',
+    2: 'sad',
+    3: 'fear',
+    4: 'angry',
+    5: 'soso',
+  };
 
   @override
   void initState() {
@@ -43,7 +57,7 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void dispose() {
     _speech.stop();
-    _bluetoothController?.disconnect(); // ✅ 안전하게 종료
+    _bluetoothController?.disconnect();
     super.dispose();
   }
 
@@ -82,14 +96,8 @@ class _HomeScreenState extends State<HomeScreen> {
     try {
       final response = await http.post(
         uri,
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-        },
-        body: jsonEncode({
-          'user_message': text,
-          'member_seq': Config.memberSeq,
-        }),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'user_message': text, 'member_seq': Config.memberSeq}),
       );
 
       if (response.statusCode == 200) {
@@ -98,6 +106,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
         final chatbotMessage = data['chatbot_response'] ?? '(응답 없음)';
         final emotionSeq = data['emotion_seq'];
+        final emotionScore = data['emotion_score'];
 
         setState(() {
           serverResponse = chatbotMessage;
@@ -107,34 +116,26 @@ class _HomeScreenState extends State<HomeScreen> {
         final now = DateTime.now();
         final key = DateTime(now.year, now.month, now.day);
 
-        if (emotionSeq != null) {
+        if (emotionSeq != null && emotionScore != null) {
+          final emotionName = emotionMap[emotionSeq] ?? 'happy';
+
+          setState(() {
+            gifImage = 'assets/gif/${emotionName}${emotionScore}.gif';
+            backgroundImage = 'assets/back/${emotionName}_back.png';
+          });
+
           final record = EmotionRecord(
             emotion: 'assets/emotions/${emotionSeq}_emoji.png',
             title: '감정 분석 기록',
             content: chatbotMessage,
           );
-
-          setState(() {
-            emotionRecords.putIfAbsent(key, () => []).add(record);
-          });
+          emotionRecords.putIfAbsent(key, () => []).add(record);
 
           final colorCode = getColorCodeByEmotionSeq(emotionSeq);
-          await _bluetoothController?.sendEmotionColor(colorCode); // ✅ 안전하게 전송
-          print('✅ 감정 색상 전송 완료: $colorCode');
-
+          await _bluetoothController?.sendEmotionColor(colorCode);
           _previousEmotionSeq = emotionSeq;
-        } else {
-          print('⚠️ 감정 번호 없음 → 감정 저장 생략');
         }
       } else {
-        final errorMessage = () {
-          try {
-            return utf8.decode(response.bodyBytes);
-          } catch (_) {
-            return '(에러 메시지를 읽을 수 없음)';
-          }
-        }();
-
         setState(() {
           serverResponse = '잘못들었습니다?';
           isFirstMessage = false;
@@ -145,7 +146,6 @@ class _HomeScreenState extends State<HomeScreen> {
         serverResponse = '지금은 통신 중이 아니에요...\n 속닥이가 다시 연결 중!';
         isFirstMessage = false;
       });
-      print('❌ 예외 발생: $e');
     }
   }
 
@@ -153,38 +153,42 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       extendBodyBehindAppBar: true,
-      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+      backgroundColor: Colors.black,
       appBar: const CustomHeader(),
       body: Stack(
         children: [
-          Positioned.fill(
+          // 1. 배경 gif에 애니메이션 부드럽게 적용
+          AnimatedSwitcher(
+            duration: const Duration(milliseconds: 600),
+            transitionBuilder: (child, animation) => FadeTransition(opacity: animation, child: child),
             child: Image.asset(
-              'assets/gif/fear3.gif',
+              gifImage,
+              key: ValueKey(gifImage),
               fit: BoxFit.cover,
+              width: double.infinity,
+              height: double.infinity,
             ),
           ),
+
+          // 2. 텍스트 + 버튼 배치
           SafeArea(
-            child: Stack(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
+                // 텍스트 메시지
                 Padding(
-                  padding: const EdgeInsets.only(top: 30),
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 50),
+                  padding: const EdgeInsets.only(top: 30, left: 40, right: 40),
+                  child: AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 300),
                     child: Container(
+                      key: ValueKey(serverResponse),
                       width: double.infinity,
-                      padding: const EdgeInsets.symmetric(
-                        vertical: 20,
-                        horizontal: 20,
-                      ),
+                      padding: const EdgeInsets.all(20),
                       decoration: BoxDecoration(
-                        color: Colors.white,
+                        color: Colors.white.withOpacity(0.92),
                         borderRadius: BorderRadius.circular(30),
                         boxShadow: const [
-                          BoxShadow(
-                            color: Colors.black12,
-                            blurRadius: 6,
-                            offset: Offset(0, 3),
-                          ),
+                          BoxShadow(color: Colors.black12, blurRadius: 6, offset: Offset(0, 3)),
                         ],
                       ),
                       child: Text(
@@ -197,76 +201,63 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                   ),
                 ),
-                if (isListening)
-                  Align(
-                    alignment: Alignment.bottomCenter,
-                    child: Padding(
-                      padding: const EdgeInsets.only(bottom: 10),
-                      child: SizedBox(
-                        width: 120,
-                        height: 120,
-                        child: Lottie.asset(
-                          'assets/lottie/mic.json',
-                          repeat: true,
-                          animate: true,
-                        ),
-                      ),
-                    ),
-                  ),
-                Align(
-                  alignment: Alignment.bottomCenter,
-                  child: Padding(
-                    padding: const EdgeInsets.only(bottom: 40),
-                    child: GestureDetector(
-                      onTap: _toggleListening,
-                      child: AnimatedContainer(
-                        duration: const Duration(milliseconds: 150),
-                        width: 60,
-                        height: 60,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          gradient: isListening
-                              ? const LinearGradient(
-                            colors: [Color(0xFFBDBDBD), Color(0xFF8E8E8E)],
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                          )
-                              : const LinearGradient(
-                            colors: [Color(0xFFDADADA), Color(0xFFAAAAAA)],
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
+
+                // 마이크 버튼 + 애니메이션 겹치기
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 40),
+                  child: Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      if (isListening)
+                        Positioned(
+                          child: SizedBox(
+                            width: 120,
+                            height: 120,
+                            child: Lottie.asset(
+                              'assets/lottie/mic.json',
+                              repeat: true,
+                              animate: true,
+                            ),
                           ),
-                          boxShadow: isListening
-                              ? [
-                            const BoxShadow(
-                              color: Colors.white,
-                              offset: Offset(-2, -2),
-                              blurRadius: 2,
-                            ),
-                            const BoxShadow(
-                              color: Colors.black26,
-                              offset: Offset(2, 2),
-                              blurRadius: 2,
-                            ),
-                          ]
-                              : [
-                            const BoxShadow(
-                              color: Colors.black26,
-                              offset: Offset(4, 4),
-                              blurRadius: 8,
-                            ),
-                            const BoxShadow(
-                              color: Colors.white,
-                              offset: Offset(-4, -4),
-                              blurRadius: 8,
-                            ),
-                          ],
                         ),
-                        child: const Center(
-                          child: Icon(Icons.mic, size: 45, color: Colors.black),
+                      GestureDetector(
+                        onTap: _toggleListening,
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 150),
+                          width: 60,
+                          height: 60,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            gradient: isListening
+                                ? const LinearGradient(
+                              colors: [Color(0xFFBDBDBD), Color(0xFF8E8E8E)],
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                            )
+                                : const LinearGradient(
+                              colors: [Color(0xFFDADADA), Color(0xFFAAAAAA)],
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                            ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: isListening ? Colors.white : Colors.black26,
+                                offset: isListening ? const Offset(-2, -2) : const Offset(4, 4),
+                                blurRadius: isListening ? 2 : 8,
+                              ),
+                              BoxShadow(
+                                color: isListening ? Colors.black26 : Colors.white,
+                                offset: isListening ? const Offset(2, 2) : const Offset(-4, -4),
+                                blurRadius: isListening ? 2 : 8,
+                              ),
+                            ],
+                          ),
+                          child: const Center(
+                            child: Icon(Icons.mic, size: 45, color: Colors.black),
+                          ),
                         ),
                       ),
-                    ),
+                    ],
                   ),
                 ),
               ],
@@ -276,21 +267,24 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
     );
   }
-}
 
-String getColorCodeByEmotionSeq(int seq) {
-  switch (seq) {
-    case 1:
-      return '#FFD700'; // 기쁨 (노랑)
-    case 2:
-      return '#1E90FF'; // 슬픔 (파랑)
-    case 3:
-      return '#E53EF2'; // 불안 (보라)
-    case 4:
-      return '#960018'; // 화남 (핑크)
-    case 5:
-      return '#32CD32'; // 평온 (연녹)
-    default:
-      return '#FFFFFF'; // 기본값 (흰색)
+
+
+
+  String getColorCodeByEmotionSeq(int seq) {
+    switch (seq) {
+      case 1:
+        return '#FFD700'; // 기쁨
+      case 2:
+        return '#1E90FF'; // 슬픔
+      case 3:
+        return '#E53EF2'; // 불안
+      case 4:
+        return '#960018'; // 화남
+      case 5:
+        return '#32CD32'; // 평온
+      default:
+        return '#FFFFFF'; // 기본값
+    }
   }
 }
