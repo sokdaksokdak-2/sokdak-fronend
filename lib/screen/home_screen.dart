@@ -126,7 +126,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
           // ── 새 EmotionRecord 생성 & 로컬 맵에 추가 ──
           final record = EmotionRecord(
-            seq          : 0,                // 서버 저장 전 임시 PK
+            detail_seq          : 0,                // 서버 저장 전 임시 PK
             emotionSeq   : emotionSeq,       // 1‒5
             title        : '감정 분석 기록',
             content      : chatbotMessage,

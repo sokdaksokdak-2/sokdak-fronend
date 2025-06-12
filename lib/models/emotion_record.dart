@@ -1,12 +1,12 @@
 class EmotionRecord {
-  final int      seq;           // detail_seq – 삭제·수정 PK
+  final int      detail_seq;           // detail_seq – 삭제·수정 PK
   final int      emotionSeq;    // 1‒5
   final String   title;
   final String   content;
   final DateTime calendarDate;  // yyyy-MM-dd → DateTime
 
   EmotionRecord({
-    required this.seq,
+    required this.detail_seq,
     required this.emotionSeq,
     required this.title,
     required this.content,
@@ -14,7 +14,7 @@ class EmotionRecord {
   });
 
   factory EmotionRecord.fromJson(Map<String, dynamic> json) => EmotionRecord(
-    seq          : (json['detail_seq'] ?? 0) as int,          // ← 기본값 0
+    detail_seq   : (json['detail_seq'] ?? 0) as int,          // ← 기본값 0
     emotionSeq   : json['emotion_seq']     as int? ?? 0,
     title        : json['title']           ?? '',             // 없으면 빈 문자열
     content      : json['context']         ?? '',
@@ -22,7 +22,7 @@ class EmotionRecord {
   );
 
   Map<String, dynamic> toJson() => {
-    'detail_seq'    : seq,
+    'detail_seq'    : detail_seq,
     'emotion_seq'   : emotionSeq,
     'title'         : title,
     'context'       : content,

@@ -30,8 +30,10 @@ class _CalendarScreenState extends State<CalendarScreen> {
     _loadMonthlySummary(_focusedDay);
   }
 
+  // ───────── 데이터 로딩 ─────────
   Future<void> _loadMonthlySummary(DateTime month) async {
     final summaries = await EmotionService.fetchMonthlySummary(month);
+    if (!mounted) return;                              // 🛡️
     setState(() {
       _monthlySummary = {
         for (final s in summaries) DateUtils.dateOnly(s.date): s.emotionSeq,
@@ -45,10 +47,14 @@ class _CalendarScreenState extends State<CalendarScreen> {
       date: date,
     );
 
+    if (!mounted) return;                              // 🛡️ ①
+
     if (records.isNotEmpty) {
       setState(() => _dailyRecords[date] = records);
+      if (!mounted) return;                            // 🛡️ ②
       _showEmotionRecordViewer(date, records);
     } else {
+      if (!mounted) return;                            // 🛡️ ③
       _showEmotionInputDialog(date);
     }
   }
@@ -66,8 +72,10 @@ class _CalendarScreenState extends State<CalendarScreen> {
   void _showEmotionInputDialog(DateTime date, {int? existingIndex}) {
     final existingList = _dailyRecords[date];
     final existingRecord =
-    (existingIndex != null && existingList != null &&
-        existingIndex >= 0 && existingIndex < existingList.length)
+    (existingIndex != null &&
+        existingList != null &&
+        existingIndex >= 0 &&
+        existingIndex < existingList.length)
         ? existingList[existingIndex]
         : null;
 
@@ -82,12 +90,14 @@ class _CalendarScreenState extends State<CalendarScreen> {
           onSave: (_) async {
             Navigator.pop(context);
             await Future.delayed(const Duration(milliseconds: 300));
+            if (!mounted) return;                       // 🛡️ A
             await _loadMonthlySummary(_focusedDay);
-
+            if (!mounted) return;                       // 🛡️ B
             final updated = await EmotionService.fetchDailyEmotions(
               memberSeq: Config.memberSeq,
               date: date,
             );
+            if (!mounted) return;                       // 🛡️ C
             setState(() => _dailyRecords[date] = updated);
           },
         ),
@@ -106,22 +116,32 @@ class _CalendarScreenState extends State<CalendarScreen> {
         // ─── 삭제 콜백 ───
         onDelete: (i) async {
           final rec = records[i];
-          debugPrint('[DEBUG] CalendarScreen onDelete i=$i  detailSeq=${rec.seq}');
-
-          // detailSeq(null) → 잘못 매핑된 레코드
-          if (rec.seq == null) {
-            debugPrint('[DEBUG] Guard blocked — invalid detailSeq');
-            return;
-          }
+          if (rec.detail_seq == 0) return;                     // detailSeq 0 → 잘못된 ID
 
           try {
-            await EmotionService.deleteEmotionRecord(
-              detailSeq: rec.seq!,           // ✅ detailSeq 하나만 전달
+            // 1) 서버 삭제
+            await EmotionService.deleteEmotionRecord(rec.detail_seq);
+
+            // 2) 서버에서 최신 리스트 다시 가져오기
+            final updated = await EmotionService.fetchDailyEmotions(
               memberSeq: Config.memberSeq,
+              date: date,
             );
-            debugPrint('[DEBUG] deleteEmotionRecord completed');
+
+            // 3) 상태 & 달력 갱신
+            setState(() => _dailyRecords[date] = updated);
+            await _loadMonthlySummary(_focusedDay);
+
+            // 4) 다이얼로그 닫기
+            Navigator.pop(context);
+
+            // 5) 남은 기록이 있으면 새 리스트로 다시 열기
+            if (updated.isNotEmpty && mounted) {
+              Future.microtask(() => _showEmotionRecordViewer(date, updated));
+            }
+
           } catch (e, st) {
-            debugPrint('[DEBUG] deleteEmotionRecord threw $e');
+            debugPrint('[deleteEmotionRecord] error: $e');
             debugPrintStack(stackTrace: st);
           }
         },
@@ -132,16 +152,17 @@ class _CalendarScreenState extends State<CalendarScreen> {
         },
       ),
     ).then((_) async {
+      if (!mounted) return;                            // 🛡️
       // 다이얼로그 닫힌 뒤 데이터 재로딩
       final updated = await EmotionService.fetchDailyEmotions(
         memberSeq: Config.memberSeq,
         date: date,
       );
+      if (!mounted) return;                            // 🛡️
       setState(() => _dailyRecords[date] = updated);
       await _loadMonthlySummary(_focusedDay);
     });
   }
-
 
   // ───────── UI 헬퍼 ─────────
   Widget _buildEmotionForDay(DateTime day) {
@@ -189,6 +210,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
     _loadMonthlySummary(_focusedDay);
   }
 
+  // ───────── build ─────────
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -222,7 +244,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
                                   style: const TextStyle(fontSize: 18)),
                               Text('${_focusedDay.month}',
                                   style: const TextStyle(
-                                      fontSize: 28, fontWeight: FontWeight.bold)),
+                                      fontSize: 28,
+                                      fontWeight: FontWeight.bold)),
                             ],
                           ),
                           Align(
@@ -252,14 +275,16 @@ class _CalendarScreenState extends State<CalendarScreen> {
                         onDaySelected: _onDaySelected,
                         daysOfWeekStyle: const DaysOfWeekStyle(
                           weekdayStyle: TextStyle(fontSize: 18),
-                          weekendStyle:
-                          TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                          weekendStyle: TextStyle(
+                              fontSize: 18, fontWeight: FontWeight.bold),
                         ),
-                        calendarStyle: const CalendarStyle(outsideDaysVisible: false),
+                        calendarStyle:
+                        const CalendarStyle(outsideDaysVisible: false),
                         calendarBuilders: CalendarBuilders(
                           defaultBuilder: (c, d, _) => _buildDayCell(d, false),
                           todayBuilder: (c, d, _) => _buildDayCell(d, false),
-                          selectedBuilder: (c, d, _) => _buildDayCell(d, true),
+                          selectedBuilder: (c, d, _) =>
+                              _buildDayCell(d, true),
                         ),
                       ),
                     ),

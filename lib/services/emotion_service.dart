@@ -5,9 +5,12 @@ import 'package:sdsd/config.dart';
 import '../network/dio_client.dart';
 import '../models/emotion_calendar_summary.dart';
 import '../models/emotion_record.dart';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
 
 class EmotionService {
   static final Dio _dio = DioClient.instance.dio;
+  static const String _baseUrl = '${Config.baseUrl}/api/emo_calendar';
 
   // ───────── 월별 요약 ─────────
   static Future<List<EmotionCalendarSummary>> fetchMonthlySummary(
@@ -34,20 +37,23 @@ class EmotionService {
     required DateTime date,
   }) async {
     final dateStr =
-        '${date.year.toString().padLeft(4, '0')}-'
-        '${date.month.toString().padLeft(2, '0')}-'
-        '${date.day.toString().padLeft(2, '0')}';
+        '${date.year.toString().padLeft(4, '0')}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
 
     final res = await _dio.get(
       '/api/emo_calendar/daily',
-      queryParameters: {'member_seq': memberSeq, 'calendar_date': dateStr},
-      options: Options(validateStatus: (_) => true),
+      queryParameters: {
+        'member_seq'   : memberSeq,
+        'calendar_date': dateStr,
+      },
+      options: Options(headers: {
+        'Authorization': 'Bearer ${Config.accessToken}',
+      }),
     );
 
-    return (res.data as List?)
-            ?.map((item) => EmotionRecord.fromJson(item))
-            .toList() ??
-        [];
+
+    return (res.data as List)
+        .map((e) => EmotionRecord.fromJson(e))
+        .toList();
   }
 
   // ───────── 분석 + 저장 (AI) ─────────
@@ -96,8 +102,7 @@ class EmotionService {
     return EmotionRecord.fromJson(saveRes.data as Map<String, dynamic>);
   }
 
-  // ───────── 직접 생성 ─────────
-  static Future<void> createEmotionManually({
+  static Future<EmotionRecord> createEmotionManually({
     required int memberSeq,
     required String calendarDate,
     required String title,
@@ -119,67 +124,102 @@ class EmotionService {
     if (res.statusCode != 200 && res.statusCode != 201) {
       throw Exception('❌ 감정 저장 실패: ${res.statusCode}');
     }
+
+    final data = res.data;
+    if (data == null || data['detail_seq'] == null) {
+      throw Exception('❌ 서버 응답에 detail_seq가 없음');
+    }
+
+// 👉 EmotionRecord.fromJson에 맞는 필드가 없을 경우 직접 매핑
+    return EmotionRecord(
+      detail_seq: data['detail_seq'],
+      emotionSeq: data['emotion_seq'],
+      title: data['title'] ?? '',
+      content: data['context'] ?? '',
+      calendarDate: data['calendar_date'] != null
+          ? DateTime.parse(data['calendar_date'])
+          : DateTime.now(), // 또는 null 허용
+    );
   }
 
-  // ───────── 수정 ─────────
-  static Future<void> updateEmotionRecord({
+  /// 감정 기록 추가
+  static Future<EmotionRecord> createEmotionRecord({
+    required int memberSeq,
+    required DateTime date,
+    required int emotionSeq,
+    required String title,
+    required String content,
+  }) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$_baseUrl/'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'member_seq': memberSeq,
+          'calendar_date': date.toIso8601String().split('T').first,
+          'emotion_seq': emotionSeq,
+          'title': title,
+          'context': content,
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        final json = jsonDecode(response.body);
+        return EmotionRecord.fromJson(json);
+      } else {
+        throw Exception('감정 기록 추가 실패: ${response.statusCode}');
+      }
+    } catch (e) {
+      throw Exception('감정 기록 추가 중 오류 발생: $e');
+    }
+  }
+
+  /// 감정 기록 수정
+  static Future<EmotionRecord> updateEmotionRecord({
     required int detailSeq,
     required int memberSeq,
     required int emotionSeq,
     required String title,
     required String content,
   }) async {
-    final res = await _dio.put(
-      '/api/emo_calendar/$detailSeq',
-      queryParameters: {'member_seq': memberSeq},
-      data: {'title': title, 'context': content, 'emotion_seq': emotionSeq},
-      options: Options(validateStatus: (_) => true),
-    );
-
-    if (res.statusCode != 200) {
-      throw Exception('❌ 감정 수정 실패: ${res.statusCode}');
-    }
-  }
-
-  // ───────── 삭제 ─────────
-  // == 제안 : DELETE 개선안 ==
-  // == DELETE (detailSeq 단독 버전) ==
-  static Future<void> deleteEmotionRecord({
-    required int detailSeq,   // ← 이제 detailSeq 하나만 필요
-    required int memberSeq,
-  }) async {
     try {
-      final res = await _dio.delete<Map<String, dynamic>>(
-        // 백엔드가 detailSeq 단독 엔드포인트로 열어둔 경우
-        // 예: DELETE /api/emo_calendar/detail/{detail_seq}
-        '/api/emo_calendar/detail/$detailSeq',
-        queryParameters: {
-          'member_seq': memberSeq,   // 권한 확인용
-        },
-        options: Options(
-          // interceptor에서 공통 헤더를 주입한다면 생략 가능
-          headers: {
-            'Authorization': 'Bearer ${Config.accessToken}',
-            'accept': 'application/json',
-          },
-          // 404(존재하지 않음)까지는 throw 하지 않고 직접 처리
-          validateStatus: (code) => code != null && code < 500,
-        ),
+      final response = await http.put(
+        Uri.parse('$_baseUrl/$detailSeq?member_seq=$memberSeq'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'emotion_seq': emotionSeq,
+          'title': title,
+          'context': content,
+        }),
       );
 
-      print('[DELETE-RESP] ${res.statusCode}  ${res.data}');
-
-      if (res.statusCode == 200) return;               // ✅ 삭제 성공
-      if (res.statusCode == 404) {
-        throw Exception('이미 삭제되었거나 존재하지 않는 항목입니다.');
+      if (response.statusCode == 200) {
+        // 수정 후 해당 날짜의 전체 기록을 다시 가져옴
+        final records = await fetchDailyEmotions(
+          memberSeq: memberSeq,
+          date: DateTime.now(),
+        );
+        return records.firstWhere((r) => r.detail_seq == detailSeq);
+      } else {
+        throw Exception('감정 기록 수정 실패: ${response.statusCode}');
       }
-      throw Exception('알 수 없는 오류: ${res.statusCode}');
-    } catch (e, st) {
-      debugPrint('[DELETE-ERR] $e');
-      debugPrintStack(stackTrace: st);
-      rethrow;
+    } catch (e) {
+      throw Exception('감정 기록 수정 중 오류 발생: $e');
     }
   }
 
+  /// 감정 기록 삭제
+  static Future<void> deleteEmotionRecord(int detailSeq) async {
+    try {
+      final response = await http.delete(
+        Uri.parse('$_baseUrl/delete/$detailSeq?member_seq=${Config.memberSeq}'),
+      );
 
+      if (response.statusCode != 200) {
+        throw Exception('감정 기록 삭제 실패: ${response.statusCode}');
+      }
+    } catch (e) {
+      throw Exception('감정 기록 삭제 중 오류 발생: $e');
+    }
+  }
 }

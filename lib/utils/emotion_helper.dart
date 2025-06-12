@@ -9,5 +9,38 @@ const Map<int, String> kEmotionAsset = {
   5: 'assets/emotions/cropped_soso.png',
 };
 
-String emotionAsset(int seq) =>
-    kEmotionAsset[seq] ?? 'assets/emotions/none.png';
+/// 감정 시퀀스에 해당하는 이미지 에셋 경로 반환
+String emotionAsset(int emotionSeq) {
+  switch (emotionSeq) {
+    case 4:
+      return 'assets/emotions/cropped_angry.png';
+    case 3:
+      return 'assets/emotions/cropped_fear.png';
+    case 1:
+      return 'assets/emotions/cropped_happy.png';
+    case 2:
+      return 'assets/emotions/cropped_sad.png';
+    case 5:
+      return 'assets/emotions/cropped_soso.png';
+    default:
+      return 'assets/emotions/cropped_soso.png';  // 기본값
+  }
+}
+
+/// 감정 시퀀스에 해당하는 한글 레이블 반환
+String emotionLabel(int emotionSeq) {
+  switch (emotionSeq) {
+    case 4:
+      return '분노';
+    case 3:
+      return '불안';
+    case 1:
+      return '행복';
+    case 2:
+      return '슬픔';
+    case 5:
+      return '평온';
+    default:
+      return '행복';  // 기본값
+  }
+}
