@@ -1,10 +1,11 @@
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/foundation.dart';
+import '../network/dio_client.dart';
 
 class Config {
   // ✅ 개발 중엔 이걸 사용
 
-  static const String baseUrl = 'http://192.168.219.129:8000';
+  static const String baseUrl = 'http://192.168.219.141:8000';
 
 
   // 로그인 후 저장되는 값
@@ -36,24 +37,27 @@ class Config {
   static Future<void> saveAuth({
     required int seq,
     required String nick,
-    required String emailAddr, // ✅ 추가
+    required String emailAddr,
     required String access,
     required String refresh,
   }) async {
-    memberSeq = seq;
-    nickname = nick;
-    email = emailAddr; // ✅ 저장
-    accessToken = access;
-    refreshToken = refresh;
+    memberSeq     = seq;
+    nickname      = nick;
+    email         = emailAddr;
+    accessToken   = access;
+    refreshToken  = refresh;
 
-    debugPrint(
-      '✅ saveAuth: access=$access, refresh=$refresh, email=$emailAddr',
-    );
+    // ✅✅ 바로 아래 두 줄만 추가!
+    // 이미 만들어진 dio의 Authorization 헤더 교체
+    DioClient.instance.dio.options.headers['Authorization'] = 'Bearer $access';
+    // 혹시 인터셉터가 있다면 options.extra 등으로도 동기화 가능
+
+    debugPrint('✅ saveAuth: access=$access, refresh=$refresh, email=$emailAddr');
 
     final prefs = await SharedPreferences.getInstance();
     await prefs.setInt('memberSeq', seq);
     await prefs.setString('nickname', nick);
-    await prefs.setString('email', emailAddr); // ✅ 저장
+    await prefs.setString('email', emailAddr);
     await prefs.setString('accessToken', access);
     await prefs.setString('refreshToken', refresh);
   }
