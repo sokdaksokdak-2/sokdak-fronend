@@ -42,7 +42,7 @@ class _NicknameEditScreenState extends State<NicknameEditScreen> {
       return;
     }
 
-    final uri = Uri.parse('${Config.baseUrl}/api/member/nickname');
+    final uri = Uri.parse('${Config.baseUrl}/api/members/nickname');
 
     try {
       final response = await http.put(

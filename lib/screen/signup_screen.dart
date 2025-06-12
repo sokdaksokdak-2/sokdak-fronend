@@ -52,7 +52,7 @@ class _SignupScreenState extends State<SignupScreen> {
       return;
     }
 
-    final url = Uri.parse('${Config.baseUrl}/api/member/register');
+    final url = Uri.parse('${Config.baseUrl}/api/members/register');
 
     try {
       final response = await http.post(

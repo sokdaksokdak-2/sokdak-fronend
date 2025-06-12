@@ -336,7 +336,7 @@ class SettingsScreen extends StatelessWidget {
                             onPressed: () async {
                               Navigator.pop(dialogContext);
                               final uri = Uri.parse(
-                                '${Config.baseUrl}/api/member/${Config.memberSeq}',
+                                '${Config.baseUrl}/api/members/${Config.memberSeq}',
                               );
                               try {
                                 final res = await http.delete(
