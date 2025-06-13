@@ -212,17 +212,17 @@ class _HomeScreenState extends State<HomeScreen> {
   String getColorCodeByEmotionSeq(int seq) {
     switch (seq) {
       case 1:
-        return 'FFD700'; // 기쁨
+        return 'FFEB3B'; // 기쁨
       case 2:
-        return 'FF9966'; // 슬픔
+        return '1565C0'; // 슬픔
       case 3:
-        return '8C7BC7'; // 불안
+        return 'FF6F00'; // 불안
       case 4:
-        return '007788'; // 화남
+        return 'FF2400'; // 화남
       case 5:
-        return 'A5D66A'; // 평온
+        return '4CAF50'; // 평온
       default:
-        return 'FFFFFF';
+        return 'FFEB3B'; // 기쁨
     }
   }
 
