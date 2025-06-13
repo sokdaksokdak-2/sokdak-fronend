@@ -55,7 +55,10 @@ class _MissionTabScreenState extends State<MissionTabScreen> {
   Widget build(BuildContext context) {
     switch (currentView) {
       case MissionView.start:
-        return MissionStartScreen(onCancel: goToSuggest);
+        return MissionStartScreen(
+          onCancel: goToSuggest,
+          onViewList: showList, // ✅ 수정된 부분
+        );
 
       case MissionView.rest:
         return MissionRestScreen(onViewList: showList);

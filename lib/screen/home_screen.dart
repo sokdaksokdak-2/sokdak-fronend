@@ -279,67 +279,72 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                 ),
                 Padding(
-                  padding: const EdgeInsets.only(bottom: 40),
-                  child: Stack(
-                    alignment: Alignment.center,
-                    children: [
-                      if (isListening)
-                        Positioned(
-                          child: SizedBox(
+                  padding: const EdgeInsets.only(bottom: 15),
+                  child: SizedBox(
+                    width: 150,
+                    height: 150,
+                    child: Stack(
+                      alignment: Alignment.center,
+                      children: [
+                        if (isListening)
+                          SizedBox(
                             width: 120,
                             height: 120,
-                            child: Lottie.asset(
-                              'assets/lottie/mic.json',
-                              repeat: true,
-                              animate: true,
-                              errorBuilder: (context, error, stackTrace) => const SizedBox(),
+                            child: IgnorePointer(
+                              child: Lottie.asset(
+                                'assets/lottie/mic.json',
+                                repeat: true,
+                                animate: true,
+                                fit: BoxFit.cover,
+                              ),
+                            ),
+                          ),
+                        GestureDetector(
+                          onTap: _toggleListening,
+                          child: AnimatedContainer(
+                            duration: const Duration(milliseconds: 150),
+                            width: 60,
+                            height: 60,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              gradient: isListening
+                                  ? const LinearGradient(
+                                colors: [Color(0xFFBDBDBD), Color(0xFF8E8E8E)],
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                              )
+                                  : const LinearGradient(
+                                colors: [Color(0xFFDADADA), Color(0xFFAAAAAA)],
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                              ),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: isListening ? Colors.white : Colors.black26,
+                                  offset: isListening ? const Offset(-2, -2) : const Offset(4, 4),
+                                  blurRadius: isListening ? 2 : 8,
+                                ),
+                                BoxShadow(
+                                  color: isListening ? Colors.black26 : Colors.white,
+                                  offset: isListening ? const Offset(2, 2) : const Offset(-4, -4),
+                                  blurRadius: isListening ? 2 : 8,
+                                ),
+                              ],
+                            ),
+                            child: const Center(
+                              child: Icon(
+                                Icons.mic,
+                                size: 45,
+                                color: Colors.black,
+                              ),
                             ),
                           ),
                         ),
-                      GestureDetector(
-                        onTap: _toggleListening,
-                        child: AnimatedContainer(
-                          duration: const Duration(milliseconds: 150),
-                          width: 60,
-                          height: 60,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            gradient: isListening
-                                ? const LinearGradient(
-                              colors: [Color(0xFFBDBDBD), Color(0xFF8E8E8E)],
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                            )
-                                : const LinearGradient(
-                              colors: [Color(0xFFDADADA), Color(0xFFAAAAAA)],
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                            ),
-                            boxShadow: [
-                              BoxShadow(
-                                color: isListening ? Colors.white : Colors.black26,
-                                offset: isListening ? const Offset(-2, -2) : const Offset(4, 4),
-                                blurRadius: isListening ? 2 : 8,
-                              ),
-                              BoxShadow(
-                                color: isListening ? Colors.black26 : Colors.white,
-                                offset: isListening ? const Offset(2, 2) : const Offset(-4, -4),
-                                blurRadius: isListening ? 2 : 8,
-                              ),
-                            ],
-                          ),
-                          child: const Center(
-                            child: Icon(
-                              Icons.mic,
-                              size: 45,
-                              color: Colors.black,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
+
               ],
             ),
           ),

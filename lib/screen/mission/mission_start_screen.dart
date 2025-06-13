@@ -3,8 +3,13 @@ import 'package:sdsd/widgets/custom_header.dart';
 
 class MissionStartScreen extends StatelessWidget {
   final VoidCallback onCancel;
+  final VoidCallback onViewList; // ✅ 추가: 미션 리스트로 이동할 콜백
 
-  const MissionStartScreen({super.key, required this.onCancel});
+  const MissionStartScreen({
+    super.key,
+    required this.onCancel,
+    required this.onViewList,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -90,9 +95,7 @@ class MissionStartScreen extends StatelessWidget {
                         SizedBox(
                           height: 50,
                           child: ElevatedButton(
-                            onPressed: () {
-                              // 나중에 미션 완료 처리
-                            },
+                            onPressed: onViewList, // ✅ 미션 완료하면 리스트로
                             style: ElevatedButton.styleFrom(
                               backgroundColor: Color(0xFF28B960),
                               shape: RoundedRectangleBorder(
@@ -113,7 +116,7 @@ class MissionStartScreen extends StatelessWidget {
                         SizedBox(
                           height: 50,
                           child: ElevatedButton(
-                            onPressed: onCancel, // ✅ 다시 제안 화면으로
+                            onPressed: onCancel, // ✅ 그만둘래는 기존대로
                             style: ElevatedButton.styleFrom(
                               backgroundColor: Colors.white,
                               foregroundColor: Colors.black,
