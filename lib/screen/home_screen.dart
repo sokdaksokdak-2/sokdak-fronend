@@ -50,15 +50,8 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _initializeBluetooth() async {
-    bool connected = await _bluetoothController?.connectToArduino() ?? false;
-
-    if (!connected) {
-      print('⏳ 첫 연결 실패... 2초 후 재시도합니다.');
-      await Future.delayed(const Duration(seconds: 2));
-      connected = await _bluetoothController?.connectToArduino() ?? false;
-    }
-
-    if (!connected && mounted) {
+    await _bluetoothController?.connectToArduino();
+    if (!(_bluetoothController?.isConnected ?? false) && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('⚠️ 블루투스 연결 실패 - 기기를 확인하세요.')),
       );
@@ -219,17 +212,17 @@ class _HomeScreenState extends State<HomeScreen> {
   String getColorCodeByEmotionSeq(int seq) {
     switch (seq) {
       case 1:
-        return '#FFF176';
+        return 'FFF176';
       case 2:
-        return '#CE93D8';
+        return 'CE93D8';
       case 3:
-        return '#B39DDB';
+        return 'B39DDB';
       case 4:
-        return '#0097A7';
+        return '0097A7';
       case 5:
-        return '#E0F2F1';
+        return 'E0F2F1';
       default:
-        return '#FFFFFF';
+        return 'FFFFFF';
     }
   }
 
