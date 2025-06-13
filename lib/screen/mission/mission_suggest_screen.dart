@@ -30,7 +30,7 @@ class MissionSuggestScreen extends StatelessWidget {
           children: [
             Positioned.fill(
               child: Image.asset(
-                'assets/gif_1_1x/sad3_1_1x.gif',
+                'assets/gif_1_1x/angry3_1_1x.gif',
                 // 'assets/gif/sad3.gif',
                 // 'assets/gif_1_2x/sad3_1_2.gif',
                 // '${backPath}${currentEmotion}_back.png',
@@ -116,7 +116,7 @@ class MissionSuggestScreen extends StatelessWidget {
                         SizedBox(
                           height: 50,
                           child: ElevatedButton(
-                            onPressed: onRest,
+                            onPressed: onViewList,
                             style: ElevatedButton.styleFrom(
                               backgroundColor: Colors.white,
                               foregroundColor: Colors.black,

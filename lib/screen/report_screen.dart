@@ -53,7 +53,7 @@ class _ReportScreenState extends State<ReportScreen> {
                             clipBehavior: Clip.antiAlias,
                             child: Image.asset(
                               'assets/images/report1_1.png',
-                              fit: BoxFit.fitWidth,
+                              fit: BoxFit.cover,
                             ),
                           ),
                         ),
@@ -71,7 +71,7 @@ class _ReportScreenState extends State<ReportScreen> {
                             clipBehavior: Clip.antiAlias,
                             child: Image.asset(
                               'assets/images/report1_2.png',
-                              fit: BoxFit.contain,
+                              fit: BoxFit.cover,
                             ),
                           ),
                         ),

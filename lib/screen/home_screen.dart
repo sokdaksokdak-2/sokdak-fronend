@@ -207,7 +207,7 @@ class _HomeScreenState extends State<HomeScreen> {
         .join('\n');
     final latestEmotionSeq = conversationHistory.last['emotion_seq'];
     final emotionPath = 'assets/emotions/${latestEmotionSeq}_emoji.png';
-    final record = EmotionRecord(
+    final record = EmotionRecordUI(
       emotion: emotionPath,
       title: '오늘의 감정 대화 요약',
       content: summary,
