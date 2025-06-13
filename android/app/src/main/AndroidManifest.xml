@@ -11,22 +11,23 @@
         android:usesPermissionFlags="neverForLocation" />
     <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
 
-    <!-- ✅ 위치 권한 (Android 6~11, BLE 스캔 필요) -->
-    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" android:maxSdkVersion="30" />
-    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" android:maxSdkVersion="30" />
+    <!-- ✅ 위치 권한 (BLE 스캔용, Android 6 이상) -->
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
 
-    <!-- ✅ 마이크 권한 (STT) -->
+    <!-- ✅ 마이크 권한 (STT용) -->
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
 
     <!-- ✅ 알림 권한 (Android 13 이상) -->
-    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" tools:targetApi="33" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"
+        tools:targetApi="33" />
 
     <application
         android:name="${applicationName}"
         android:label="sdsd"
         android:icon="@mipmap/ic_launcher">
 
-        <!-- ✅ permission_handler v12 이상 메타데이터 등록 -->
+        <!-- ✅ permission_handler v12 이상 메타데이터 -->
         <meta-data
             android:name="flutter.permission_handler.permissions"
             android:resource="@xml/flutter_permission_handler" />
@@ -40,13 +41,12 @@
             android:hardwareAccelerated="true"
             android:windowSoftInputMode="adjustResize">
 
-            <!-- 앱 진입점 -->
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
 
-            <!-- 딥링크 예: myapp://oauth/callback -->
+            <!-- ✅ 딥링크 예시: myapp://oauth/callback -->
             <intent-filter android:autoVerify="true">
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
@@ -57,7 +57,6 @@
                     android:pathPrefix="/callback" />
             </intent-filter>
 
-            <!-- Flutter 테마 -->
             <meta-data
                 android:name="io.flutter.embedding.android.NormalTheme"
                 android:resource="@style/NormalTheme" />
@@ -68,7 +67,7 @@
             android:value="2" />
     </application>
 
-    <!-- ✅ 외부 앱 호출 허용 (예: STT 또는 외부 브라우저) -->
+    <!-- ✅ 외부 앱 호출 허용 -->
     <queries>
         <intent>
             <action android:name="android.intent.action.PROCESS_TEXT" />
