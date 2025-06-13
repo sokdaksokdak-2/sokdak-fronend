@@ -1,220 +1,225 @@
+// lib/services/emotion_service.dart
 import 'package:dio/dio.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:sdsd/config.dart';
+import '../network/dio_client.dart';
 import '../models/emotion_calendar_summary.dart';
 import '../models/emotion_record.dart';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
 
-/// 💡 여기 상수를 다시 넣어 줍니다 ────────────────────────────
-const Map<String, int> emotionSeqMap = {
-  'cropped_angry': 1,
-  'cropped_fear': 2,
-  'cropped_happy': 3,
-  'cropped_sad': 4,
-  'cropped_soso': 5,
-};
-/// ──────────────────────────────────────────────────────────
-
-/// 감정 관련 네트워크 요청 모음
 class EmotionService {
-  // ───────────────── 월별 요약 ─────────────────
+  static final Dio _dio = DioClient.instance.dio;
+  static const String _baseUrl = '${Config.baseUrl}/api/emo_calendar';
+
+  // ───────── 월별 요약 ─────────
   static Future<List<EmotionCalendarSummary>> fetchMonthlySummary(
-      DateTime targetMonth) async {
-    final response = await Dio().get(
-      '${Config.baseUrl}/api/emo_calendar/monthly_summary',
+    DateTime targetMonth,
+  ) async {
+    final res = await _dio.get(
+      '/api/emo_calendar/monthly_summary',
       queryParameters: {
+        'member_seq': Config.memberSeq,
         'year': targetMonth.year,
         'month': targetMonth.month,
-        'member_seq': Config.memberSeq,
       },
-      options: Options(
-        headers: {'Authorization': 'Bearer ${Config.accessToken}'},
-      ),
+      options: Options(validateStatus: (_) => true),
     );
-
-    return (response.data as List)
-        .map((e) => EmotionCalendarSummary.fromJson(e))
-        .toList();
+    return (res.data as List?)
+            ?.map((e) => EmotionCalendarSummary.fromJson(e))
+            .toList() ??
+        [];
   }
 
-  // ───────────────── 일별 조회 ─────────────────
-  static Future<List<EmotionRecord>> fetchDailyEmotions(DateTime date) async {
+  // ───────── 일별 조회 ─────────
+  static Future<List<EmotionRecord>> fetchDailyEmotions({
+    required int memberSeq,
+    required DateTime date,
+  }) async {
     final dateStr =
         '${date.year.toString().padLeft(4, '0')}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
 
-    final response = await Dio().get(
-      '${Config.baseUrl}/api/emo_calendar/daily',
+    final res = await _dio.get(
+      '/api/emo_calendar/daily',
       queryParameters: {
-        'member_seq': Config.memberSeq,
+        'member_seq'   : memberSeq,
         'calendar_date': dateStr,
       },
-      options: Options(
-        headers: {'Authorization': 'Bearer ${Config.accessToken}'},
-      ),
+      options: Options(headers: {
+        'Authorization': 'Bearer ${Config.accessToken}',
+      }),
     );
 
-    return (response.data as List).map<EmotionRecord>((item) {
-      return EmotionRecord(
-        emotion: item['character_image_url'] ?? '', // null이면 빈 문자열
-        title: item['title'] ?? '',                 // null이면 빈 문자열
-        content: item['context'] ?? '',             // null이면 빈 문자열
-        seq: item['calendar_seq'],                  // 필요시 null도 OK
-      );
-    }).toList();
 
+    return (res.data as List)
+        .map((e) => EmotionRecord.fromJson(e))
+        .toList();
   }
 
-
+  // ───────── 분석 + 저장 (AI) ─────────
   static Future<EmotionRecord> analyzeAndSave({
     required DateTime date,
     required String text,
     required String title,
   }) async {
     final dateStr =
-        '${date.year.toString().padLeft(4, '0')}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
+        '${date.year.toString().padLeft(4, '0')}-'
+        '${date.month.toString().padLeft(2, '0')}-'
+        '${date.day.toString().padLeft(2, '0')}';
 
-    try {
-      final response = await Dio().post(
-        '${Config.baseUrl}/api/chatbot/complete/${Config.memberSeq}',
-        data: {
-          'calendar_date': dateStr,
-          'text': text,
-          'title': title,
-        },
-        options: Options(
-          headers: {'Authorization': 'Bearer ${Config.accessToken}'},
-          responseType: ResponseType.json,
-        ),
-      );
+    final aiRes = await _dio.post(
+      '/api/chatbot/complete/${Config.memberSeq}',
+      data: {'calendar_date': dateStr, 'text': text, 'title': title},
+      options: Options(responseType: ResponseType.json),
+    );
 
+    final data = aiRes.data;
+    final emotionSeq =
+        (data['emotion'] is int)
+            ? data['emotion'] as int
+            : int.tryParse(data['emotion']?.toString() ?? '') ?? 0;
 
-      final data = response.data;
-      print('📥 분석 응답 데이터: $data');
+    if (emotionSeq < 1 || emotionSeq > 5) {
+      throw Exception('⚠️ 잘못된 emotion_seq 수신: $emotionSeq');
+    }
 
-      final emotionStr = data['emotion']?.toString();
-      final imageUrl = data['character_image_url'] ?? '';
-      final context = data['context'] ?? '';
-      print('➡️ 감정 번호: $emotionStr');
-      print('📝 감정 설명(context): $context');
-      print('🖼 캐릭터 이미지 URL: $imageUrl');
-
-      final emotionSeq = int.tryParse(emotionStr ?? '');
-      if (emotionSeq == null || emotionSeq < 1 || emotionSeq > 5) {
-        throw Exception("⚠️ 서버에서 잘못된 감정 번호 받음: $emotionStr");
-      }
-
-      final recordTitle = (title.isNotEmpty ? title : '감정 기록').substring(
-        0,
-        title.length > 100 ? 100 : title.length,
-      );
-      final recordContext =
-          context.length > 500 ? context.substring(0, 500) : context;
-
-      final requestData = {
+    final saveRes = await _dio.post(
+      '/api/emo_calendar/',
+      data: {
         'member_seq': Config.memberSeq,
         'calendar_date': dateStr,
-        'title': recordTitle,
-        'context': recordContext,
+        'title': title.isNotEmpty ? title : '감정 기록',
+        'context': data['context'] ?? '',
         'emotion_seq': emotionSeq,
-      };
+      },
+      options: Options(validateStatus: (_) => true),
+    );
 
-      print('📤 감정 기록 저장 요청 데이터: $requestData');
-
-      final saveResponse = await Dio().post(
-        '${Config.baseUrl}/api/emo_calendar/',
-        data: requestData,
-        options: Options(
-          headers: {'Authorization': 'Bearer ${Config.accessToken}'},
-          validateStatus: (_) => true,
-        ),
-      );
-
-      print('📥 감정 저장 응답 상태: ${saveResponse.statusCode}');
-      print('📥 감정 저장 응답 본문: ${saveResponse.data}');
-
-      if (saveResponse.statusCode != 200 && saveResponse.statusCode != 201) {
-        throw Exception("❌ 감정 저장 실패: ${saveResponse.statusCode}");
-      }
-
-      return EmotionRecord(
-        emotion: imageUrl,
-        title: recordTitle,
-        content: recordContext,
-      );
-    } catch (e) {
-      print("❗ analyzeAndSave 예외 발생: ${e.toString()}");
-
-      if (e is DioError) {
-        print('❗ DioError 응답: ${e.response}');
-        print('❗ DioError 메시지: ${e.message}');
-      }
-      rethrow;
+    if (saveRes.statusCode != 200 && saveRes.statusCode != 201) {
+      throw Exception('❌ 감정 저장 실패: ${saveRes.statusCode}');
     }
+
+    return EmotionRecord.fromJson(saveRes.data as Map<String, dynamic>);
   }
 
-  static Future<void> createEmotionManually({
+  static Future<EmotionRecord> createEmotionManually({
     required int memberSeq,
     required String calendarDate,
     required String title,
     required String context,
     required int emotionSeq,
   }) async {
-    final requestData = {
-      'member_seq': memberSeq,
-      'calendar_date': calendarDate,
-      'title': title,
-      'context': context,
-      'emotion_seq': emotionSeq,
-    };
-
-    print('📤 직접 감정 기록 요청 데이터: $requestData');
-
-    final response = await Dio().post(
-      '${Config.baseUrl}/api/emo_calendar/',
-      data: requestData,
-      options: Options(
-        headers: {'Authorization': 'Bearer ${Config.accessToken}'},
-        validateStatus: (_) => true,
-      ),
+    final res = await _dio.post(
+      '/api/emo_calendar/',
+      data: {
+        'member_seq': memberSeq,
+        'calendar_date': calendarDate,
+        'title': title,
+        'context': context,
+        'emotion_seq': emotionSeq,
+      },
+      options: Options(validateStatus: (_) => true),
     );
 
-    print('📥 감정 저장 응답 상태: ${response.statusCode}');
-    print('📥 감정 저장 응답 본문: ${response.data}');
-
-    if (response.statusCode != 200 && response.statusCode != 201) {
-      throw Exception("❌ 감정 저장 실패: ${response.statusCode}");
+    if (res.statusCode != 200 && res.statusCode != 201) {
+      throw Exception('❌ 감정 저장 실패: ${res.statusCode}');
     }
+
+    final data = res.data;
+    if (data == null || data['detail_seq'] == null) {
+      throw Exception('❌ 서버 응답에 detail_seq가 없음');
+    }
+
+// 👉 EmotionRecord.fromJson에 맞는 필드가 없을 경우 직접 매핑
+    return EmotionRecord(
+      detail_seq: data['detail_seq'],
+      emotionSeq: data['emotion_seq'],
+      title: data['title'] ?? '',
+      content: data['context'] ?? '',
+      calendarDate: data['calendar_date'] != null
+          ? DateTime.parse(data['calendar_date'])
+          : DateTime.now(), // 또는 null 허용
+    );
   }
 
-  static Future<void> updateEmotionRecord({
-    required int calendarSeq,
+  /// 감정 기록 추가
+  static Future<EmotionRecord> createEmotionRecord({
+    required int memberSeq,
+    required DateTime date,
+    required int emotionSeq,
     required String title,
     required String content,
-    required String emotion,
   }) async {
-    final emotionSeq = emotionSeqMap[emotion];
-    if (emotionSeq == null) {
-      throw Exception('Unknown emotion: $emotion');
-    }
+    try {
+      final response = await http.post(
+        Uri.parse('$_baseUrl/'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'member_seq': memberSeq,
+          'calendar_date': date.toIso8601String().split('T').first,
+          'emotion_seq': emotionSeq,
+          'title': title,
+          'context': content,
+        }),
+      );
 
-    await Dio().put(
-      '${Config.baseUrl}/api/emo_calendar/$calendarSeq',
-      data: {
-        'title': title,
-        'context': content,
-        'emotion_seq': emotionSeq,
-        'character_image_url': '',
-      },
-      options: Options(
-        headers: {'Authorization': 'Bearer ${Config.accessToken}'},
-      ),
-    );
+      if (response.statusCode == 200) {
+        final json = jsonDecode(response.body);
+        return EmotionRecord.fromJson(json);
+      } else {
+        throw Exception('감정 기록 추가 실패: ${response.statusCode}');
+      }
+    } catch (e) {
+      throw Exception('감정 기록 추가 중 오류 발생: $e');
+    }
   }
 
-  static Future<void> deleteEmotionRecord(int calendarSeq) async {
-    await Dio().delete(
-      '${Config.baseUrl}/api/emo_calendar/$calendarSeq',
-      options: Options(
-        headers: {'Authorization': 'Bearer ${Config.accessToken}'},
-      ),
-    );
+  /// 감정 기록 수정
+  static Future<EmotionRecord> updateEmotionRecord({
+    required int detailSeq,
+    required int memberSeq,
+    required int emotionSeq,
+    required String title,
+    required String content,
+  }) async {
+    try {
+      final response = await http.put(
+        Uri.parse('$_baseUrl/$detailSeq?member_seq=$memberSeq'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'emotion_seq': emotionSeq,
+          'title': title,
+          'context': content,
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        // 수정 후 해당 날짜의 전체 기록을 다시 가져옴
+        final records = await fetchDailyEmotions(
+          memberSeq: memberSeq,
+          date: DateTime.now(),
+        );
+        return records.firstWhere((r) => r.detail_seq == detailSeq);
+      } else {
+        throw Exception('감정 기록 수정 실패: ${response.statusCode}');
+      }
+    } catch (e) {
+      throw Exception('감정 기록 수정 중 오류 발생: $e');
+    }
+  }
+
+  /// 감정 기록 삭제
+  static Future<void> deleteEmotionRecord(int detailSeq) async {
+    try {
+      final response = await http.delete(
+        Uri.parse('$_baseUrl/delete/$detailSeq?member_seq=${Config.memberSeq}'),
+      );
+
+      if (response.statusCode != 200) {
+        throw Exception('감정 기록 삭제 실패: ${response.statusCode}');
+      }
+    } catch (e) {
+      throw Exception('감정 기록 삭제 중 오류 발생: $e');
+    }
   }
 }
