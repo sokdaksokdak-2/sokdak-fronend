@@ -23,7 +23,7 @@ String emotionAsset(int emotionSeq) {
     case 5:
       return 'assets/emotions/cropped_soso.png';
     default:
-      return 'assets/emotions/cropped_soso.png';  // 기본값
+      return 'assets/emotions/none.png';  // 기본값
   }
 }
 
