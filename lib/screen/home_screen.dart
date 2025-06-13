@@ -3,7 +3,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:lottie/lottie.dart';
 import 'package:sdsd/config.dart';
-import 'package:sdsd/models/emotion_record.dart';
+import 'package:sdsd/models/emotion_record_ui.dart';
 import 'package:speech_to_text/speech_to_text.dart' as stt;
 import 'package:http/http.dart' as http;
 import 'package:sdsd/widgets/custom_header.dart';
@@ -26,7 +26,7 @@ class _HomeScreenState extends State<HomeScreen> {
   String serverResponse = '';
   Timer? silenceTimer;
 
-  Map<DateTime, List<EmotionRecord>> emotionRecords = {};
+  Map<DateTime, List<EmotionRecordUI>> emotionRecords = {};
   List<Map<String, dynamic>> conversationHistory = [];
   int? _previousEmotionSeq;
 
@@ -95,7 +95,28 @@ class _HomeScreenState extends State<HomeScreen> {
       _speech.stop();
       silenceTimer?.cancel();
       if (conversationHistory.isNotEmpty) {
-        saveEmotionSummary();
+
+        final now = DateTime.now();
+        final key = DateTime(now.year, now.month, now.day);
+
+        final summary = conversationHistory
+            .map((entry) => "나: ${entry['user']}\n속닥이: ${entry['bot']}")
+            .join('\n');
+
+        final latestEmotionSeq = conversationHistory.last['emotion_seq'];
+        final emotionPath = 'assets/emotions/${latestEmotionSeq}_emoji.png';
+
+        final record = EmotionRecordUI(
+          emotion: emotionPath,
+          title: '오늘의 감정 대화 요약',
+          content: summary,
+        );
+
+        emotionRecords.putIfAbsent(key, () => []).add(record);
+        conversationHistory.clear();
+
+        print('✅ 대화 종료: 요약 서버로 전송됨 (${summary.length}자)');
+
       }
     }
   }

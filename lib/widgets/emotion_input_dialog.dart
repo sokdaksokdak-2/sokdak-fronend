@@ -1,19 +1,21 @@
+// lib/widgets/emotion_input_dialog.dart
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:sdsd/config.dart';
 import 'package:sdsd/services/emotion_service.dart';
 import '../models/emotion_record.dart';
+import '../utils/emotion_helper.dart';
 
 class EmotionInputDialog extends StatefulWidget {
   final DateTime date;
   final EmotionRecord? existingRecord;
-  final void Function(EmotionRecord) onSave;
+  final Function(EmotionRecord) onSave;
 
   const EmotionInputDialog({
     super.key,
     required this.date,
-    required this.onSave,
     this.existingRecord,
+    required this.onSave,
   });
 
   @override
@@ -21,289 +23,153 @@ class EmotionInputDialog extends StatefulWidget {
 }
 
 class _EmotionInputDialogState extends State<EmotionInputDialog> {
-  String? selectedEmotion;
-  late TextEditingController titleController;
-  late TextEditingController contentController;
-
-  final Map<String, int> emotionMap = {
-    'cropped_angry': 1,
-    'cropped_fear': 2,
-    'cropped_happy': 3,
-    'cropped_sad': 4,
-    'cropped_soso': 5,
-  };
+  late final TextEditingController _titleController;
+  late final TextEditingController _contentController;
+  late int _selectedEmotionSeq;
+  bool _isLoading = false;
 
   @override
   void initState() {
     super.initState();
-    selectedEmotion = widget.existingRecord?.emotion;
-    titleController = TextEditingController(
-      text: widget.existingRecord?.title ?? '',
-    );
-    contentController = TextEditingController(
-      text: widget.existingRecord?.content ?? '',
-    );
+    _titleController = TextEditingController(text: widget.existingRecord?.title ?? '');
+    _contentController = TextEditingController(text: widget.existingRecord?.content ?? '');
+    _selectedEmotionSeq = widget.existingRecord?.emotionSeq ?? 0;
   }
 
   @override
   void dispose() {
-    titleController.dispose();
-    contentController.dispose();
+    _titleController.dispose();
+    _contentController.dispose();
     super.dispose();
   }
 
-  String _emotionLabel(String emotion) {
-    switch (emotion) {
-      case 'cropped_happy':
-        return '행복';
-      case 'cropped_fear':
-        return '불안';
-      case 'cropped_angry':
-        return '분노';
-      case 'cropped_sad':
-        return '슬픔';
-      case 'cropped_soso':
-        return '평온';
-      default:
-        return '';
+  Future<void> _saveEmotion() async {
+    if (_selectedEmotionSeq == 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('감정을 선택해주세요')),
+      );
+      return;
+    }
+
+    if (_titleController.text.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('제목을 입력해주세요')),
+      );
+      return;
+    }
+
+    setState(() => _isLoading = true);
+
+    try {
+      EmotionRecord record;
+      
+      if (widget.existingRecord != null) {
+        // 수정
+        record = await EmotionService.updateEmotionRecord(
+          detailSeq: widget.existingRecord!.detail_seq,
+          memberSeq: Config.memberSeq,
+          emotionSeq: _selectedEmotionSeq,
+          title: _titleController.text.trim(),
+          content: _contentController.text.trim(),
+        );
+      } else {
+        // 새로 추가
+        record = await EmotionService.createEmotionRecord(
+          memberSeq: Config.memberSeq,
+          date: widget.date,
+          emotionSeq: _selectedEmotionSeq,
+          title: _titleController.text.trim(),
+          content: _contentController.text.trim(),
+        );
+      }
+
+      if (!mounted) return;
+      widget.onSave(record);
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('저장 실패: $e')),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final emotions = [
-      'cropped_happy',
-      'cropped_fear',
-      'cropped_angry',
-      'cropped_sad',
-      'cropped_soso',
-    ];
-
-    return Container(
-      constraints: const BoxConstraints(minHeight: 550, maxWidth: 325),
-      decoration: BoxDecoration(
-        color: Colors.grey[100],
-        borderRadius: BorderRadius.circular(20),
-      ),
-      padding: const EdgeInsets.all(20),
-      child: SingleChildScrollView(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const SizedBox(height: 22),
-            const Padding(
-              padding: EdgeInsets.only(left: 8),
-              child: Align(
-                alignment: Alignment.centerLeft,
-                child: Text(
-                  "기분 어때?",
-                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
-                ),
-              ),
-            ),
-            const SizedBox(height: 8),
-            Container(
-              padding: const EdgeInsets.symmetric(vertical: 10),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: Row(
-                  children:
-                      emotions.map((emotion) {
-                        final isSelected = selectedEmotion == emotion;
-                        return GestureDetector(
-                          onTap:
-                              () => setState(() => selectedEmotion = emotion),
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 8),
-                            child: Opacity(
-                              opacity: isSelected ? 1.0 : 0.3,
-                              child: Column(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Image.asset(
-                                    'assets/emotions/$emotion.png',
-                                    width: 36,
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    _emotionLabel(emotion),
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      fontWeight:
-                                          isSelected
-                                              ? FontWeight.bold
-                                              : FontWeight.normal,
-                                      color: Colors.black,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        );
-                      }).toList(),
-                ),
-              ),
-            ),
-
-            const SizedBox(height: 25),
-
-            const Padding(
-              padding: EdgeInsets.only(left: 8),
-              child: Align(
-                alignment: Alignment.centerLeft,
-                child: Text(
-                  "제목",
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-                ),
-              ),
-            ),
-            const SizedBox(height: 8),
-            TextField(
-              controller: titleController,
-              style: const TextStyle(fontSize: 14),
-              decoration: InputDecoration(
-                filled: true,
-                fillColor: Colors.white,
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 14,
-                ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide.none,
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: const BorderSide(color: Colors.green),
-                ),
-              ),
-            ),
-
-            const SizedBox(height: 25),
-
-            const Padding(
-              padding: EdgeInsets.only(left: 8),
-              child: Align(
-                alignment: Alignment.centerLeft,
-                child: Text(
-                  "내용",
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-                ),
-              ),
-            ),
-            const SizedBox(height: 8),
-            TextField(
-              controller: contentController,
-              maxLines: 6,
-              style: const TextStyle(fontSize: 14),
-              decoration: InputDecoration(
-                filled: true,
-                fillColor: Colors.white,
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 14,
-                ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide.none,
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: const BorderSide(color: Colors.green),
-                ),
-              ),
-            ),
-
-            const SizedBox(height: 20),
-
-            Row(
-              children: [
-                Expanded(
-                  child: ElevatedButton(
-                    onPressed: () => Navigator.pop(context),
-                    style: ElevatedButton.styleFrom(
-                      minimumSize: Size.zero,
-                      backgroundColor: Colors.white,
-                      foregroundColor: Colors.black,
-                      padding: const EdgeInsets.symmetric(vertical: 8),
-                      elevation: 0,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        side: const BorderSide(color: Colors.black12),
-                      ),
+    return Padding(
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            '${widget.date.year}년 ${widget.date.month}월 ${widget.date.day}일',
+            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 24),
+          
+          // 감정 선택
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            alignment: WrapAlignment.center,
+            children: List.generate(5, (i) {
+              final seq = i + 1;
+              return GestureDetector(
+                onTap: () => setState(() => _selectedEmotionSeq = seq),
+                child: Container(
+                  width: 60,
+                  height: 60,
+                  decoration: BoxDecoration(
+                    border: Border.all(
+                      color: _selectedEmotionSeq == seq
+                          ? Theme.of(context).primaryColor
+                          : Colors.grey,
+                      width: 2,
                     ),
-                    child: const Text('취소', style: TextStyle(fontSize: 14)),
+                    borderRadius: BorderRadius.circular(8),
                   ),
+                  child: Image.asset(emotionAsset(seq)),
                 ),
-                const SizedBox(width: 20),
-                Expanded(
-                  child: ElevatedButton(
-                    onPressed: () async {
-                      final title = titleController.text.trim();
-                      final content = contentController.text.trim();
+              );
+            }),
+          ),
+          const SizedBox(height: 24),
 
-                      if (selectedEmotion == null ||
-                          title.isEmpty ||
-                          content.isEmpty)
-                        return;
-
-                      final emotionSeq = emotionMap[selectedEmotion];
-                      final formattedDate = DateFormat(
-                        'yyyy-MM-dd',
-                      ).format(widget.date);
-
-                      try {
-                        if (widget.existingRecord?.seq != null) {
-                          await EmotionService.updateEmotionRecord(
-                            calendarSeq: widget.existingRecord!.seq!,
-                            title: title,
-                            content: content,
-                            emotion: selectedEmotion!,
-                          );
-                        } else {
-                          await EmotionService.createEmotionManually(
-                            memberSeq: Config.memberSeq,
-                            calendarDate: formattedDate,
-                            title: title,
-                            context: content,
-                            emotionSeq: emotionSeq!,
-                          );
-                        }
-
-                        widget.onSave(
-                          EmotionRecord(
-                            seq: widget.existingRecord?.seq,
-                            emotion: selectedEmotion!,
-                            title: title,
-                            content: content,
-                          ),
-                        );
-                        Navigator.pop(context);
-                      } catch (e) {
-                        print('감정 저장 실패: ${e.toString()}');
-                      }
-                    },
-                    style: ElevatedButton.styleFrom(
-                      minimumSize: Size.zero,
-                      backgroundColor: Colors.green,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 8),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                    child: const Text('저장', style: TextStyle(fontSize: 14)),
-                  ),
-                ),
-              ],
+          // 제목 입력
+          TextField(
+            controller: _titleController,
+            decoration: const InputDecoration(
+              labelText: '제목',
+              border: OutlineInputBorder(),
             ),
-          ],
-        ),
+            maxLines: 1,
+          ),
+          const SizedBox(height: 16),
+
+          // 내용 입력
+          TextField(
+            controller: _contentController,
+            decoration: const InputDecoration(
+              labelText: '내용',
+              border: OutlineInputBorder(),
+            ),
+            maxLines: 3,
+          ),
+          const SizedBox(height: 24),
+
+          // 저장 버튼
+          ElevatedButton(
+            onPressed: _isLoading ? null : _saveEmotion,
+            child: _isLoading
+                ? const CircularProgressIndicator()
+                : Text(widget.existingRecord != null ? '수정하기' : '저장하기'),
+          ),
+        ],
       ),
     );
   }
