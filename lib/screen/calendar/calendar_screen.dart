@@ -166,11 +166,15 @@ class _CalendarScreenState extends State<CalendarScreen> {
   Widget _buildEmotionForDay(DateTime day) {
     final seq = _monthlySummary[DateUtils.dateOnly(day)];
     if (seq == null) {
-      return Image.asset('assets/emotions/none.png', width: 35, height: 35);
+      return Opacity(
+        opacity: 0.4, // 원하는 불투명도
+        child: Image.asset('assets/emotions/none.png', width: 35, height: 40),
+      );
     }
+
     return Image.asset(
       emotionAsset(seq), // 💎 새 헬퍼로 바로 경로 변환
-      width: 40,
+      width: 39,
       height: 40,
     );
   }
@@ -183,8 +187,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
         const SizedBox(height: 6),
         isSelected
             ? Container(
-              width: 30,
-              height: 30,
+              width: 25,
+              height: 25,
               decoration: const BoxDecoration(
                 color: Color(0xFF28B960),
                 shape: BoxShape.circle,
