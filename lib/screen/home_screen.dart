@@ -200,7 +200,7 @@ class _HomeScreenState extends State<HomeScreen> {
         .join('\n');
     final latestEmotionSeq = conversationHistory.last['emotion_seq'];
     final emotionPath = 'assets/emotions/${latestEmotionSeq}_emoji.png';
-    final record = EmotionRecord(
+    final record = EmotionRecordUI(
       emotion: emotionPath,
       title: '오늘의 감정 대화 요약',
       content: summary,
@@ -212,17 +212,17 @@ class _HomeScreenState extends State<HomeScreen> {
   String getColorCodeByEmotionSeq(int seq) {
     switch (seq) {
       case 1:
-        return '#FFD700';
+        return 'FFF176';
       case 2:
-        return '#1E90FF';
+        return 'CE93D8';
       case 3:
-        return '#E53EF2';
+        return 'B39DDB';
       case 4:
-        return '#960018';
+        return '0097A7';
       case 5:
-        return '#32CD32';
+        return 'E0F2F1';
       default:
-        return '#FFFFFF';
+        return 'FFFFFF';
     }
   }
 
