@@ -3,8 +3,12 @@ import 'package:flutter/foundation.dart';
 
 class Config {
   // ✅ 개발 중엔 이걸 사용
+  // static const String baseUrl = 'http://192.168.219.194:8000';
 
-  static const String baseUrl = 'http://sokdak.kro.kr';
+  static const String baseUrl = 'http://192.168.219.245:8000';
+
+  // static const String baseUrl = 'http://sokdak.kro.kr';
+
 
 
   // 로그인 후 저장되는 값
@@ -79,5 +83,5 @@ class Config {
   }
 
   // 🚀 배포 시 baseUrl 교체
-  // static const String baseUrl = 'https://api.mysite.com';
+  // static const String baseUrl = 'https://sokdak.kro.kr.api';
 }

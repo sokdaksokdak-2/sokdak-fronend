@@ -1,85 +1,78 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:tools="http://schemas.android.com/tools"> <!-- ✅ tools 네임스페이스 추가 -->
+    xmlns:tools="http://schemas.android.com/tools"
+    package="com.example.sdsd">
 
-    <!-- ✅ 블루투스 권한 (Android 12 이하 포함) -->
+    <!-- ✅ 블루투스 권한 (Android 11 이하) -->
     <uses-permission android:name="android.permission.BLUETOOTH" />
     <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" />
 
-    <!-- ✅ Android 12 이상용 (SDK 31 이상) -->
-    <uses-permission android:name="android.permission.BLUETOOTH_SCAN" />
+    <!-- ✅ Android 12 이상 -->
+    <uses-permission android:name="android.permission.BLUETOOTH_SCAN"
+        android:usesPermissionFlags="neverForLocation" />
     <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
-    <uses-permission android:name="android.permission.BLUETOOTH_ADVERTISE" />
 
-    <!-- ✅ 위치 권한 (Android 6 이상에서 BLE 스캔 필요) -->
+    <!-- ✅ 위치 권한 (BLE 스캔용, Android 6 이상) -->
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
 
-
-    <!-- ✅ 마이크 권한 -->
+    <!-- ✅ 마이크 권한 (STT용) -->
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
 
-    <!-- ✅ 알림 권한 (Android 13+) -->
-    <uses-permission
-        android:name="android.permission.POST_NOTIFICATIONS"
+    <!-- ✅ 알림 권한 (Android 13 이상) -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"
         tools:targetApi="33" />
-
-
 
     <application
         android:name="${applicationName}"
-        android:icon="@mipmap/ic_launcher"
-        android:label="sdsd">
+        android:label="sdsd"
+        android:icon="@mipmap/ic_launcher">
+
+        <!-- ✅ permission_handler v12 이상 메타데이터 -->
+        <meta-data
+            android:name="flutter.permission_handler.permissions"
+            android:resource="@xml/flutter_permission_handler" />
 
         <activity
             android:name=".MainActivity"
-            android:configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|locale|layoutDirection|fontScale|screenLayout|density|uiMode"
             android:exported="true"
-            android:hardwareAccelerated="true"
             android:launchMode="singleTop"
-            android:taskAffinity=""
             android:theme="@style/LaunchTheme"
+            android:configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|locale|layoutDirection|fontScale|screenLayout|density|uiMode"
+            android:hardwareAccelerated="true"
             android:windowSoftInputMode="adjustResize">
 
-            <meta-data
-                android:name="io.flutter.embedding.android.NormalTheme"
-                android:resource="@style/NormalTheme" />
-
-            <!-- 앱 런처 -->
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
 
-            <!-- ✅ 딥링크용: 소셜 로그인 redirect URI 예: myapp://oauth/callback?access_token=... -->
+            <!-- ✅ 딥링크 예시: myapp://oauth/callback -->
             <intent-filter android:autoVerify="true">
                 <action android:name="android.intent.action.VIEW" />
-
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
-
                 <data
+                    android:scheme="myapp"
                     android:host="oauth"
-                    android:pathPrefix="/callback"
-                    android:scheme="myapp" />
+                    android:pathPrefix="/callback" />
             </intent-filter>
 
+            <meta-data
+                android:name="io.flutter.embedding.android.NormalTheme"
+                android:resource="@style/NormalTheme" />
         </activity>
 
-        <!-- Flutter용 -->
         <meta-data
             android:name="flutterEmbedding"
             android:value="2" />
     </application>
 
-    <!-- PROCESS_TEXT 권한 (STT 관련) -->
+    <!-- ✅ 외부 앱 호출 허용 -->
     <queries>
         <intent>
             <action android:name="android.intent.action.PROCESS_TEXT" />
             <data android:mimeType="text/plain" />
         </intent>
-    </queries>
-
-    <!--  외부 http 연결 해결  -->
-    <queries>
         <intent>
             <action android:name="android.intent.action.VIEW" />
             <data android:scheme="http" />
@@ -89,6 +82,5 @@
             <data android:scheme="https" />
         </intent>
     </queries>
-
 
 </manifest>

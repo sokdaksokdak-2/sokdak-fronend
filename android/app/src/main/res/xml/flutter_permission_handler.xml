@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<permissions xmlns:android="http://schemas.android.com/apk/res/android">
+    <permission android:name="android.permission.ACCESS_FINE_LOCATION"/>
+    <permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>
+    <permission android:name="android.permission.BLUETOOTH_SCAN"/>
+    <permission android:name="android.permission.BLUETOOTH_CONNECT"/>
+    <permission android:name="android.permission.RECORD_AUDIO"/>
+    <permission android:name="android.permission.POST_NOTIFICATIONS"/>
+</permissions>
