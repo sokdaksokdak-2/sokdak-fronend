@@ -1,82 +1,126 @@
 import 'dart:convert';
 import 'dart:typed_data';
+
 import 'package:flutter_bluetooth_serial/flutter_bluetooth_serial.dart';
+import 'package:permission_handler/permission_handler.dart';
 
 class BluetoothController {
   final FlutterBluetoothSerial _bluetooth = FlutterBluetoothSerial.instance;
-
   BluetoothConnection? _connection;
   bool isConnected = false;
 
-  // 수신 이벤트 콜백 등록 가능하게 하기 위해 Stream 리스너
+  // 외부에서 수신 메시지를 받을 수 있도록 콜백 정의
   void Function(String message)? onDataReceived;
 
-  // 블루투스 장치에 연결
-  Future<void> connectToArduino() async {
-    // 블루투스 활성화 여부 확인
-    bool isEnabled = await _bluetooth.isEnabled ?? false;
-    if (!isEnabled) {
-      print('⚠️ 블루투스가 꺼져 있습니다.');
-      return;
-    }
-
-    List<BluetoothDevice> bondedDevices = await _bluetooth.getBondedDevices();
-
-    for (BluetoothDevice device in bondedDevices) {
-      if (['무드등등'].contains(device.name)) {
-        try {
-          print('🔌 ${device.name} (${device.address})에 연결 시도 중...');
-          _connection = await BluetoothConnection.toAddress(device.address);
-          isConnected = true;
-          print('✅ 연결 성공: ${device.name}');
-
-          // 데이터 수신 처리
-          _connection!.input?.listen((Uint8List data) {
-            String message = utf8.decode(data);
-            print('📥 수신됨: $message');
-            if (onDataReceived != null) {
-              onDataReceived!(message);
-            }
-          }).onDone(() {
-            print('⛔ 연결이 종료되었습니다.');
-            disconnect();
-          });
-
-          return;
-        } catch (e) {
-          print('❌ 연결 실패: $e');
-        }
-      }
-    }
-
-    print('🔍 HC-06 또는 Arduino 장치를 찾을 수 없습니다.');
+  // ✅ 로그 함수 통합
+  void log(String message) {
+    print('[BluetoothController] $message');
   }
 
-  // 색상 코드 전송
-  Future<void> sendEmotionColor(String colorCode) async {
-    if (_connection == null || !_connection!.isConnected) {
-      print('⚠️ 블루투스에 연결되어 있지 않습니다.');
-      return;
+  /// ✅ 권한 요청
+  Future<bool> _requestBluetoothPermissions() async {
+    final status = await [
+      Permission.bluetoothScan,
+      Permission.bluetoothConnect,
+      Permission.location,
+    ].request();
+
+    final allGranted = status.values.every((s) => s.isGranted);
+    if (!allGranted) {
+      log('❌ 권한 거부됨');
+      return false;
+    }
+    return true;
+  }
+
+  /// ✅ 아두이노 또는 HC-06 장치에 연결
+  Future<bool> connectToArduino({List<String> targetNames = const ['무드등등', 'HC-06']}) async {
+    if (!await _requestBluetoothPermissions()) {
+      log('❌ 필요한 권한 부족으로 연결 중단');
+      return false;
+    }
+
+    if (_connection?.isConnected ?? false) {
+      log('⚠️ 이미 연결됨');
+      return true;
+    }
+
+    final isEnabled = await _bluetooth.isEnabled ?? false;
+    if (!isEnabled) {
+      log('⚠️ 블루투스 꺼짐');
+      return false;
     }
 
     try {
-      final message = colorCode.trim() + '\n'; // ✅ 여기에서만 \n 붙이기
-      print('📤 전송할 메시지: $message');
-      _connection!.output.add(utf8.encode(message));
-      await _connection!.output.allSent;
-      print('🎨 색상 코드 전송 완료: $message');
+      final bondedDevices = await _bluetooth.getBondedDevices();
+      for (final device in bondedDevices) {
+        if (targetNames.contains(device.name)) {
+          try {
+            log('🔌 ${device.name}(${device.address}) 연결 시도');
+            _connection = await BluetoothConnection.toAddress(device.address);
+
+            if (_connection!.isConnected) {
+              isConnected = true;
+              log('✅ 연결 성공');
+
+              _connection!.input?.listen(_handleIncomingData).onDone(() {
+                log('⛔ 연결 종료');
+                disconnect();
+              });
+
+              return true;
+            }
+          } catch (e) {
+            log('❌ 연결 실패: $e');
+          }
+        }
+      }
+
+      log('🔍 타겟 장치(${targetNames.join(', ')})를 찾을 수 없음');
+      return false;
     } catch (e) {
-      print('❌ 전송 실패: $e');
+      log('❌ 기기 검색 중 오류: $e');
+      return false;
     }
   }
 
-  // 연결 해제
+  /// ✅ 수신 데이터 처리
+  void _handleIncomingData(Uint8List data) {
+    try {
+      final message = utf8.decode(data);
+      log('📥 수신: $message');
+      onDataReceived?.call(message);
+    } catch (e) {
+      log('⚠️ 데이터 디코딩 오류: $e');
+    }
+  }
+
+  /// ✅ 색상 코드 전송
+  Future<void> sendEmotionColor(String colorCode) async {
+    if (!(_connection?.isConnected ?? false)) {
+      log('⚠️ 연결 안 됨');
+      return;
+    }
+
+    final message = '${colorCode.trim()}\n'; // 아두이노는 \n 기준으로 파싱
+    try {
+      _connection!.output.add(utf8.encode(message));
+      await _connection!.output.allSent;
+      log('🎨 전송 완료: $message');
+    } catch (e) {
+      log('❌ 전송 실패: $e');
+    }
+  }
+
+  /// ✅ 연결 해제
   Future<void> disconnect() async {
-    if (_connection != null) {
-      await _connection!.close();
+    try {
+      await _connection?.close();
       _connection = null;
       isConnected = false;
-      print('🔌 연결 해제됨');
+      log('🔌 연결 해제 완료');
+    } catch (e) {
+      log('⚠️ 연결 해제 오류: $e');
     }
   }
 }

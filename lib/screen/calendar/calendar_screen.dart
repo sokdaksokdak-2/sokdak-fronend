@@ -167,6 +167,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
   // ───────── UI 헬퍼 ─────────
   Widget _buildEmotionForDay(DateTime day) {
     final seq = _monthlySummary[DateUtils.dateOnly(day)];
+
     return Image.asset(
       emotionAsset(seq ?? 0),
       width: 40,
@@ -181,6 +182,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
         const SizedBox(height: 6),
         selected
             ? Container(
+
           width: 30,
           height: 30,
           decoration: const BoxDecoration(
@@ -196,6 +198,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
             ),
           ),
         )
+
             : Text('${day.day}', style: const TextStyle(fontSize: 16)),
         const SizedBox(height: 4),
         _buildEmotionForDay(day),
