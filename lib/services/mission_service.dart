@@ -63,6 +63,7 @@ class MissionService {
       final data = response.data as List<dynamic>;
       return data.map((item) => MissionListItem.fromJson(item)).toList();
     } catch (e) {
+      print('$e');
       throw Exception('미션 목록 불러오기 실패: $e');
     }
   }
@@ -80,9 +81,51 @@ class MissionService {
 
       return MissionLatest.fromJson(response.data);
     } catch (e) {
+      print('$e');
       throw Exception('최신 미션 불러오기 실패: $e');
     }
+    
+    
   }
+
+  /// 미션 완료
+  static Future<void> completeMission(int memberMissionSeq) async {
+    try {
+      final response = await Dio().patch(
+        '${Config.baseUrl}/api/members/missions/$memberMissionSeq/complete',
+        options: Options(headers: {
+          'Authorization': 'Bearer ${Config.accessToken}',
+        }),
+      );
+
+      if (response.statusCode != 200) {
+        throw Exception('미션 완료 실패');
+      }
+    } catch (e) {
+      print('❌ 미션 완료 오류: $e');
+      throw Exception('미션 완료 실패: $e');
+    }
+  }
+
+  /// 미션 포기 (삭제)
+  static Future<void> deleteMission(int memberMissionSeq) async {
+    try {
+      final response = await Dio().delete(
+        '${Config.baseUrl}/api/members/missions/$memberMissionSeq',
+        options: Options(headers: {
+          'Authorization': 'Bearer ${Config.accessToken}',
+        }),
+      );
+
+      if (response.statusCode != 204) {
+        throw Exception('미션 삭제 실패');
+      }
+    } catch (e) {
+      print('❌ 미션 삭제 오류: $e');
+      throw Exception('미션 삭제 실패: $e');
+    }
+  }
+
 
 
 
