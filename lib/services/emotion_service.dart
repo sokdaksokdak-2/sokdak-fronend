@@ -39,22 +39,32 @@ class EmotionService {
     final dateStr =
         '${date.year.toString().padLeft(4, '0')}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
 
-    final res = await _dio.get(
-      '/api/emo_calendar/daily',
-      queryParameters: {
-        'member_seq'   : memberSeq,
-        'calendar_date': dateStr,
-      },
-      options: Options(headers: {
-        'Authorization': 'Bearer ${Config.accessToken}',
-      }),
-    );
+    try {
+      final res = await _dio.get(
+        '/api/emo_calendar/daily',
+        queryParameters: {
+          'member_seq': memberSeq,
+          'calendar_date': dateStr,
+        },
+        options: Options(headers: {
+          'Authorization': 'Bearer ${Config.accessToken}',
+        }),
+      );
 
+      if (res.statusCode != 200 || res.data == null) return [];
 
-    return (res.data as List)
-        .map((e) => EmotionRecord.fromJson(e))
-        .toList();
+      final data = res.data;
+      if (data is List) {
+        return data.map((e) => EmotionRecord.fromJson(e)).toList();
+      } else {
+        return [];
+      }
+    } catch (e, st) {
+      debugPrint('[EmotionService] fetchDailyEmotions 예외: $e');
+      return [];
+    }
   }
+
 
   // ───────── 분석 + 저장 (AI) ─────────
   static Future<EmotionRecord> analyzeAndSave({

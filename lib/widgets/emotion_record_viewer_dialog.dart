@@ -35,8 +35,6 @@ class _EmotionRecordViewerDialogState extends State<EmotionRecordViewerDialog> {
   }
 
   Future<void> _confirmAndDelete(int index) async {
-    print('[DEBUG] _confirmAndDelete index=$index'); // ①
-
     final ok = await showDialog<bool>(
       context: context,
       builder:
@@ -60,14 +58,18 @@ class _EmotionRecordViewerDialogState extends State<EmotionRecordViewerDialog> {
     setState(() => _loading = true);
 
     try {
-      print('[DEBUG] before onDelete'); // ②
-      await widget.onDelete(index); // 실제 DELETE API 콜백
-      print('[DEBUG] after onDelete'); // ③
+      await widget.onDelete(index);
+      _records.removeAt(index);
 
-      setState(() => _records.removeAt(index));
+      if (_records.isEmpty) {
+        _records.clear();
+        if (mounted && Navigator.of(context).canPop()) {
+          Navigator.of(context).pop();
+        }
+        return;
+      }
 
-      // 모두 삭제되면 다이얼로그 자동 닫기
-      if (_records.isEmpty && mounted) Navigator.pop(context);
+      if (mounted) setState(() {});
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -242,17 +244,13 @@ class _EmotionRecordViewerDialogState extends State<EmotionRecordViewerDialog> {
                 const SizedBox(height: 16),
                 Row(
                   children: [
-                    // 저장
                     Expanded(
                       child: ElevatedButton(
-                        onPressed: () {
-                          // 저장 기능
-                        },
+                        onPressed: () {},
                         style: ElevatedButton.styleFrom(
                           backgroundColor: const Color(0xFFF3F3F3),
                           elevation: 0,
                           padding: const EdgeInsets.symmetric(vertical: 10),
-                          // ✅ 버튼 패딩 직접 지정
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(12),
                           ),
@@ -277,15 +275,10 @@ class _EmotionRecordViewerDialogState extends State<EmotionRecordViewerDialog> {
                         ),
                       ),
                     ),
-
                     const SizedBox(width: 8),
-
-                    // 공유
                     Expanded(
                       child: ElevatedButton(
-                        onPressed: () {
-                          // 공유 기능
-                        },
+                        onPressed: () {},
                         style: ElevatedButton.styleFrom(
                           backgroundColor: const Color(0xFFF3F3F3),
                           elevation: 0,
@@ -314,13 +307,10 @@ class _EmotionRecordViewerDialogState extends State<EmotionRecordViewerDialog> {
                         ),
                       ),
                     ),
-
                     const SizedBox(width: 8),
-
-                    // 닫기
                     Expanded(
                       child: ElevatedButton(
-                        onPressed: () => Navigator.pop(context),
+                        onPressed: () => Navigator.pop(context, 'closed'), // ✅ 문자열 'closed' 반환!
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.grey[500],
                           foregroundColor: Colors.white,
@@ -332,8 +322,6 @@ class _EmotionRecordViewerDialogState extends State<EmotionRecordViewerDialog> {
                       ),
                     ),
                     const SizedBox(width: 8),
-
-                    // 추가
                     Expanded(
                       child: ElevatedButton(
                         onPressed: widget.onAdd,
