@@ -171,8 +171,15 @@ class _CalendarScreenState extends State<CalendarScreen> {
 
   Widget _buildEmotionForDay(DateTime day) {
     final seq = _monthlySummary[DateUtils.dateOnly(day)];
-    return Image.asset(emotionAsset(seq ?? 0), width: 40, height: 40);
+
+    final asset = emotionAsset(seq ?? 0);
+
+    return Opacity(
+      opacity: (seq == null || seq == 0) ? 0.3 : 1.0, // 감정 없을 때만 반투명
+      child: Image.asset(asset, width: 40, height: 40),
+    );
   }
+
 
   Widget _buildDayCell(DateTime day, bool selected) {
     return Column(
