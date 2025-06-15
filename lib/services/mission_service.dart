@@ -1,6 +1,11 @@
 // lib/services/mission_service.dart
 import 'dart:math';
+import 'package:dio/dio.dart';
+import 'package:sdsd/models/mission_list_item.dart';
 import 'package:sdsd/models/mission_record.dart';
+import '../config.dart';
+import '../models/mission_latest.dart';
+
 
 class MissionService {
   /// 월별 요약 (날짜별로 완료/미완료만 알면 되므로 List 길이를 1로 사용)
@@ -44,4 +49,41 @@ class MissionService {
       ),
     ];
   }
+
+  /// 특정 회원의 미션 목록 (최신 생성일 순)
+  static Future<List<MissionListItem>> fetchAllMissions() async {
+    try {
+      final response = await Dio().get(
+        '${Config.baseUrl}/api/members/${Config.memberSeq}/missions',
+        options: Options(headers: {
+          'Authorization': 'Bearer ${Config.accessToken}',
+        }),
+      );
+
+      final data = response.data as List<dynamic>;
+      return data.map((item) => MissionListItem.fromJson(item)).toList();
+    } catch (e) {
+      throw Exception('미션 목록 불러오기 실패: $e');
+    }
+  }
+  /// 특정 회원의 최근 생성 미션
+  static Future<MissionLatest?> fetchLatestMission() async {
+    try {
+      final response = await Dio().get(
+        '${Config.baseUrl}/api/members/${Config.memberSeq}/missions/latest',
+        options: Options(headers: {
+          'Authorization': 'Bearer ${Config.accessToken}',
+        }),
+      );
+
+      if (response.data == null) return null;
+
+      return MissionLatest.fromJson(response.data);
+    } catch (e) {
+      throw Exception('최신 미션 불러오기 실패: $e');
+    }
+  }
+
+
+
 }

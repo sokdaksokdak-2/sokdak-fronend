@@ -40,7 +40,7 @@ class ProfileCard extends StatelessWidget {
                   ],
                 ),
                 const Spacer(),
-                const Icon(Icons.chevron_right, size: 20),
+                // const Icon(Icons.chevron_right, size: 20),
               ],
             ),
 
@@ -61,7 +61,7 @@ class ProfileCard extends StatelessWidget {
                       ),
                     ),
                     Text(
-                      '63℃',
+                      '36.5℃',
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
                         fontSize: 14,
@@ -74,7 +74,7 @@ class ProfileCard extends StatelessWidget {
                 ClipRRect(
                   borderRadius: BorderRadius.circular(8),
                   child: LinearProgressIndicator(
-                    value: 0.63,
+                    value: 0.365,
                     minHeight: 8,
                     backgroundColor: Colors.grey[300],
                     valueColor: AlwaysStoppedAnimation<Color>(

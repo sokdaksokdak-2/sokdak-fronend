@@ -7,7 +7,7 @@ import '../../widgets/custom_header.dart';
 import '../../models/emotion_record.dart';
 import '../../services/emotion_service.dart';
 import '../../utils/emotion_helper.dart';
-import '../../widgets/emoion_input_dialog.dart';
+import 'package:sdsd/widgets/emoion_input_dialog.dart';
 import '../../widgets/emotion_record_viewer_dialog.dart';
 
 class CalendarScreen extends StatefulWidget {
@@ -24,6 +24,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
   Map<DateTime, int?> _monthlySummary = {};
   Map<DateTime, List<EmotionRecord>> _dailyRecords = {};
 
+  bool _openedFromAddButton = false; // ✅ 추가 버튼으로 닫혔는지 추적
+
   @override
   void initState() {
     super.initState();
@@ -33,7 +35,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
   // ───────── 데이터 로딩 ─────────
   Future<void> _loadMonthlySummary(DateTime month) async {
     final summaries = await EmotionService.fetchMonthlySummary(month);
-    if (!mounted) return;                              // 🛡️
+    if (!mounted) return;
     setState(() {
       _monthlySummary = {
         for (final s in summaries) DateUtils.dateOnly(s.date): s.emotionSeq,
@@ -47,14 +49,14 @@ class _CalendarScreenState extends State<CalendarScreen> {
       date: date,
     );
 
-    if (!mounted) return;                              // 🛡️ ①
+    if (!mounted) return;
 
     if (records.isNotEmpty) {
       setState(() => _dailyRecords[date] = records);
-      if (!mounted) return;                            // 🛡️ ②
+      if (!mounted) return;
       _showEmotionRecordViewer(date, records);
     } else {
-      if (!mounted) return;                            // 🛡️ ③
+      if (!mounted) return;
       _showEmotionInputDialog(date);
     }
   }
@@ -83,21 +85,22 @@ class _CalendarScreenState extends State<CalendarScreen> {
       context: context,
       barrierDismissible: false,
       builder: (_) => Dialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
         child: EmotionInputDialog(
           date: date,
           existingRecord: existingRecord,
           onSave: (_) async {
-            Navigator.pop(context);
             await Future.delayed(const Duration(milliseconds: 300));
-            if (!mounted) return;                       // 🛡️ A
+            if (!mounted) return;
             await _loadMonthlySummary(_focusedDay);
-            if (!mounted) return;                       // 🛡️ B
+            if (!mounted) return;
             final updated = await EmotionService.fetchDailyEmotions(
               memberSeq: Config.memberSeq,
               date: date,
             );
-            if (!mounted) return;                       // 🛡️ C
+            if (!mounted) return;
             setState(() => _dailyRecords[date] = updated);
           },
         ),
@@ -106,6 +109,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
   }
 
   void _showEmotionRecordViewer(DateTime date, List<EmotionRecord> records) {
+    _openedFromAddButton = false; // 초기화
+
     showDialog(
       context: context,
       builder: (_) => EmotionRecordViewerDialog(
@@ -113,33 +118,25 @@ class _CalendarScreenState extends State<CalendarScreen> {
         memberSeq: Config.memberSeq,
         onEdit: (i) => _showEmotionInputDialog(date, existingIndex: i),
 
-        // ─── 삭제 콜백 ───
         onDelete: (i) async {
           final rec = records[i];
-          if (rec.detail_seq == 0) return;                     // detailSeq 0 → 잘못된 ID
+          if (rec.detail_seq == 0) return;
 
           try {
-            // 1) 서버 삭제
             await EmotionService.deleteEmotionRecord(rec.detail_seq);
-
-            // 2) 서버에서 최신 리스트 다시 가져오기
             final updated = await EmotionService.fetchDailyEmotions(
               memberSeq: Config.memberSeq,
               date: date,
             );
 
-            // 3) 상태 & 달력 갱신
             setState(() => _dailyRecords[date] = updated);
             await _loadMonthlySummary(_focusedDay);
 
-            // 4) 다이얼로그 닫기
             Navigator.pop(context);
 
-            // 5) 남은 기록이 있으면 새 리스트로 다시 열기
             if (updated.isNotEmpty && mounted) {
               Future.microtask(() => _showEmotionRecordViewer(date, updated));
             }
-
           } catch (e, st) {
             debugPrint('[deleteEmotionRecord] error: $e');
             debugPrintStack(stackTrace: st);
@@ -147,18 +144,23 @@ class _CalendarScreenState extends State<CalendarScreen> {
         },
 
         onAdd: () {
+          _openedFromAddButton = true;
           Navigator.pop(context);
-          _showEmotionInputDialog(date);
+          Future.microtask(() => _showEmotionInputDialog(date));
         },
       ),
     ).then((_) async {
-      if (!mounted) return;                            // 🛡️
-      // 다이얼로그 닫힌 뒤 데이터 재로딩
+      if (!mounted) return;
+      if (_openedFromAddButton) {
+        _openedFromAddButton = false;
+        return;
+      }
+
       final updated = await EmotionService.fetchDailyEmotions(
         memberSeq: Config.memberSeq,
         date: date,
       );
-      if (!mounted) return;                            // 🛡️
+      if (!mounted) return;
       setState(() => _dailyRecords[date] = updated);
       await _loadMonthlySummary(_focusedDay);
     });
@@ -167,12 +169,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
   // ───────── UI 헬퍼 ─────────
   Widget _buildEmotionForDay(DateTime day) {
     final seq = _monthlySummary[DateUtils.dateOnly(day)];
-
-    return Image.asset(
-      emotionAsset(seq ?? 0),
-      width: 40,
-      height: 40,
-    );
+    return Image.asset(emotionAsset(seq ?? 0), width: 40, height: 40);
   }
 
   Widget _buildDayCell(DateTime day, bool selected) {
@@ -182,7 +179,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
         const SizedBox(height: 6),
         selected
             ? Container(
-
           width: 30,
           height: 30,
           decoration: const BoxDecoration(
@@ -198,7 +194,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
             ),
           ),
         )
-
             : Text('${day.day}', style: const TextStyle(fontSize: 16)),
         const SizedBox(height: 4),
         _buildEmotionForDay(day),
@@ -228,7 +223,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
               child: SingleChildScrollView(
                 child: Column(
                   children: [
-                    // ─── 월 이동 헤더 ───
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 24),
                       child: Stack(
@@ -243,12 +237,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
                           ),
                           Column(
                             children: [
-                              Text('${_focusedDay.year}',
-                                  style: const TextStyle(fontSize: 18)),
-                              Text('${_focusedDay.month}',
-                                  style: const TextStyle(
-                                      fontSize: 28,
-                                      fontWeight: FontWeight.bold)),
+                              Text('${_focusedDay.year}', style: const TextStyle(fontSize: 18)),
+                              Text('${_focusedDay.month}', style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold)),
                             ],
                           ),
                           Align(
@@ -262,7 +252,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
                       ),
                     ),
                     const SizedBox(height: 8),
-                    // ─── 캘린더 ───
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 16),
                       child: TableCalendar(
@@ -278,16 +267,13 @@ class _CalendarScreenState extends State<CalendarScreen> {
                         onDaySelected: _onDaySelected,
                         daysOfWeekStyle: const DaysOfWeekStyle(
                           weekdayStyle: TextStyle(fontSize: 18),
-                          weekendStyle: TextStyle(
-                              fontSize: 18, fontWeight: FontWeight.bold),
+                          weekendStyle: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                         ),
-                        calendarStyle:
-                        const CalendarStyle(outsideDaysVisible: false),
+                        calendarStyle: const CalendarStyle(outsideDaysVisible: false),
                         calendarBuilders: CalendarBuilders(
                           defaultBuilder: (c, d, _) => _buildDayCell(d, false),
                           todayBuilder: (c, d, _) => _buildDayCell(d, false),
-                          selectedBuilder: (c, d, _) =>
-                              _buildDayCell(d, true),
+                          selectedBuilder: (c, d, _) => _buildDayCell(d, true),
                         ),
                       ),
                     ),

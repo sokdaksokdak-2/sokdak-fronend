@@ -1,4 +1,4 @@
-// lib/utils/emotion_helper.dart
+import 'package:flutter/material.dart';
 
 /// emotion_seq 1‒5 ↔︎ 이미지 에셋 매핑
 const Map<int, String> kEmotionAsset = {
@@ -23,7 +23,7 @@ String emotionAsset(int emotionSeq) {
     case 5:
       return 'assets/emotions/cropped_soso.png';
     default:
-      return 'assets/emotions/none.png';  // 기본값
+      return 'assets/emotions/none.png'; // 기본값
   }
 }
 
@@ -41,6 +41,23 @@ String emotionLabel(int emotionSeq) {
     case 5:
       return '평온';
     default:
-      return '행복';  // 기본값
+      return '행복'; // 기본값
   }
 }
+
+/// ✅ 감정 색상 + 레이블 묶음 클래스
+class EmotionInfo {
+  final String label;
+  final Color color;
+
+  const EmotionInfo({required this.label, required this.color});
+}
+
+/// ✅ 감정 시퀀스 → 레이블 + 색상 매핑
+const Map<int, EmotionInfo> kEmotionInfoMap = {
+  1: EmotionInfo(label: '행복', color: Color(0xAAFFED66)),
+  2: EmotionInfo(label: '슬픔', color: Color(0xAA80CAFF)),
+  3: EmotionInfo(label: '불안', color: Color(0x88FFB356)),
+  4: EmotionInfo(label: '분노', color: Color(0xAAFFAFA3)),
+  5: EmotionInfo(label: '평온', color: Color(0xAA85E0A3)),
+};

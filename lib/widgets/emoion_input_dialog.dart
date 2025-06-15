@@ -1,9 +1,9 @@
-// lib/widgets/emotion_input_dialog.dart
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:sdsd/config.dart';
 import 'package:sdsd/services/emotion_service.dart';
 import '../models/emotion_record.dart';
+import '../utils/emotion_helper.dart';
 
 class EmotionInputDialog extends StatefulWidget {
   final DateTime date;
@@ -22,172 +22,161 @@ class EmotionInputDialog extends StatefulWidget {
 }
 
 class _EmotionInputDialogState extends State<EmotionInputDialog> {
-  String? selectedEmotion; // 예: 'cropped_angry'
-  late TextEditingController titleController;
-  late TextEditingController contentController;
-
-  /// 감정 키 ↔︎ emotion_seq 매핑
-  static const Map<String, int> _emotionMap = {
-    'cropped_angry': 1,
-    'cropped_fear': 2,
-    'cropped_happy': 3,
-    'cropped_sad': 4,
-    'cropped_soso': 5,
-  };
+  late final TextEditingController _titleController;
+  late final TextEditingController _contentController;
+  late int _selectedEmotionSeq;
+  bool _isLoading = false;
 
   @override
   void initState() {
     super.initState();
-
-    // 기존 레코드가 있으면 emotionSeq → 키 역매핑
-    selectedEmotion =
-    widget.existingRecord != null
-        ? _emotionMap.entries
-        .firstWhere(
-          (e) => e.value == widget.existingRecord!.emotionSeq,
-      orElse: () => const MapEntry('cropped_soso', 5),
-    )
-        .key
-        : null;
-
-    titleController = TextEditingController(
+    _titleController = TextEditingController(
       text: widget.existingRecord?.title ?? '',
     );
-    contentController = TextEditingController(
+    _contentController = TextEditingController(
       text: widget.existingRecord?.content ?? '',
     );
+    _selectedEmotionSeq = widget.existingRecord?.emotionSeq ?? 0;
   }
 
   @override
   void dispose() {
-    titleController.dispose();
-    contentController.dispose();
+    _titleController.dispose();
+    _contentController.dispose();
     super.dispose();
   }
 
-  String _emotionLabel(String emotion) {
-    switch (emotion) {
-      case 'cropped_happy':
-        return '행복';
-      case 'cropped_fear':
-        return '불안';
-      case 'cropped_angry':
-        return '분노';
-      case 'cropped_sad':
-        return '슬픔';
-      case 'cropped_soso':
-        return '평온';
-      default:
-        return '';
+  Future<void> _saveEmotion() async {
+    if (_selectedEmotionSeq == 0) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('감정을 선택해주세요')));
+      return;
+    }
+
+    if (_titleController.text.trim().isEmpty) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('제목을 입력해주세요')));
+      return;
+    }
+
+    setState(() => _isLoading = true);
+
+    try {
+      EmotionRecord record;
+
+      if (widget.existingRecord != null) {
+        record = await EmotionService.updateEmotionRecord(
+          detailSeq: widget.existingRecord!.detail_seq,
+          memberSeq: Config.memberSeq,
+          emotionSeq: _selectedEmotionSeq,
+          title: _titleController.text.trim(),
+          content: _contentController.text.trim(),
+        );
+      } else {
+        record = await EmotionService.createEmotionManually(
+          memberSeq: Config.memberSeq,
+          calendarDate: DateFormat('yyyy-MM-dd').format(widget.date),
+          emotionSeq: _selectedEmotionSeq,
+          title: _titleController.text.trim(),
+          context: _contentController.text.trim(),
+        );
+      }
+
+      if (!mounted) return;
+      widget.onSave(record);
+      Navigator.pop(context);
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('저장 실패: $e')));
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    const emotions = [
-      'cropped_happy',
-      'cropped_fear',
-      'cropped_angry',
-      'cropped_sad',
-      'cropped_soso',
-    ];
-
     return Container(
-      constraints: const BoxConstraints(minHeight: 550, maxWidth: 325),
+      constraints: const BoxConstraints(minHeight: 550, maxWidth: 340),
       decoration: BoxDecoration(
         color: Colors.grey[100],
         borderRadius: BorderRadius.circular(20),
       ),
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(24),
       child: SingleChildScrollView(
         child: Column(
           mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            const SizedBox(height: 22),
-
-            // ───────── 감정 선택 ─────────
+            // const SizedBox(height: 5),
             const Align(
               alignment: Alignment.centerLeft,
-              child: Padding(
-                padding: EdgeInsets.only(left: 8),
-                child: Text(
-                  '기분 어때?',
-                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
-                ),
+              child: Text(
+                '기분 어때?',
+                style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
               ),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 12),
+
             Container(
-              padding: const EdgeInsets.symmetric(vertical: 10),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: Row(
-                  children:
-                  emotions.map((emotion) {
-                    final isSelected = selectedEmotion == emotion;
-                    return GestureDetector(
-                      onTap:
-                          () => setState(() => selectedEmotion = emotion),
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 8),
-                        child: Opacity(
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [4, 3, 1, 5, 2].map((seq) {
+                  final isSelected = _selectedEmotionSeq == seq;
+                  return GestureDetector(
+                    onTap: () => setState(() => _selectedEmotionSeq = seq),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Opacity(
                           opacity: isSelected ? 1.0 : 0.3,
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Image.asset(
-                                'assets/emotions/$emotion.png',
-                                width: 36,
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                _emotionLabel(emotion),
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  fontWeight:
-                                  isSelected
-                                      ? FontWeight.bold
-                                      : FontWeight.normal,
-                                ),
-                              ),
-                            ],
+                          child: Image.asset(emotionAsset(seq), width: 45, height: 45),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          emotionLabelFromSeq(seq),
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                            color: isSelected ? Colors.black : Colors.black38,
                           ),
                         ),
-                      ),
-                    );
-                  }).toList(),
-                ),
+                      ],
+                    ),
+                  );
+                }).toList(),
               ),
             ),
 
-            const SizedBox(height: 25),
 
-            // ───────── 제목 ─────────
+            const SizedBox(height: 28),
             _fieldLabel('제목'),
             const SizedBox(height: 8),
             TextField(
-              controller: titleController,
+              controller: _titleController,
               decoration: _inputDecoration(),
             ),
 
-            const SizedBox(height: 25),
-
-            // ───────── 내용 ─────────
+            const SizedBox(height: 24),
             _fieldLabel('내용'),
             const SizedBox(height: 8),
             TextField(
-              controller: contentController,
+              controller: _contentController,
               maxLines: 6,
               decoration: _inputDecoration(),
             ),
 
-            const SizedBox(height: 20),
-
-            // ───────── 버튼 ─────────
+            const SizedBox(height: 28),
             Row(
               children: [
                 Expanded(
@@ -200,9 +189,14 @@ class _EmotionInputDialogState extends State<EmotionInputDialog> {
                 const SizedBox(width: 20),
                 Expanded(
                   child: ElevatedButton(
-                    onPressed: _save,
+                    onPressed: _isLoading ? null : _saveEmotion,
                     style: _saveStyle(),
-                    child: const Text('저장', style: TextStyle(fontSize: 14)),
+                    child:
+                        _isLoading
+                            ? const CircularProgressIndicator(
+                              color: Colors.white,
+                            )
+                            : const Text('저장', style: TextStyle(fontSize: 14)),
                   ),
                 ),
               ],
@@ -213,58 +207,8 @@ class _EmotionInputDialogState extends State<EmotionInputDialog> {
     );
   }
 
-  // ───────── 저장 로직 ─────────
-  Future<void> _save() async {
-    final title = titleController.text.trim();
-    final content = contentController.text.trim();
-
-    if (selectedEmotion == null || title.isEmpty || content.isEmpty) return;
-
-    final emotionSeq = _emotionMap[selectedEmotion]!;
-    final formattedDate = DateFormat('yyyy-MM-dd').format(widget.date);
-
-    try {
-      if (widget.existingRecord?.detail_seq != null) {
-        // ─── 수정 ───
-        await EmotionService.updateEmotionRecord(
-          detailSeq: widget.existingRecord!.detail_seq!,
-          memberSeq: Config.memberSeq,
-          emotionSeq: emotionSeq,
-          title: title,
-          content: content,
-        );
-      } else {
-        // ─── 신규 저장 ───
-        await EmotionService.createEmotionManually(
-          memberSeq: Config.memberSeq,
-          calendarDate: formattedDate,
-          title: title,
-          context: content,
-          emotionSeq: emotionSeq,
-        );
-      }
-
-      // ※ 인풋 다이얼로그 내부 예시
-      widget.onSave(
-        EmotionRecord(
-          detail_seq         : widget.existingRecord?.detail_seq ?? 0,   // 신규 기록이면 0(임시); 저장 후 다시 조회 시 실제 값으로 교체
-          emotionSeq  : emotionSeq,
-          title       : title,
-          content     : content,
-          calendarDate: widget.date,                       // 다이얼로그에 넘겨받은 해당 날짜(DateTime)
-        ),
-      );
-
-
-      Navigator.pop(context);
-    } catch (e) {
-      print('감정 저장 실패: $e');
-    }
-  }
-
-  // ───────── 공통 위젯/스타일 ─────────
   Padding _fieldLabel(String text) => Padding(
-    padding: const EdgeInsets.only(left: 8),
+    padding: const EdgeInsets.only(left: 4),
     child: Align(
       alignment: Alignment.centerLeft,
       child: Text(
@@ -305,4 +249,21 @@ class _EmotionInputDialogState extends State<EmotionInputDialog> {
     padding: const EdgeInsets.symmetric(vertical: 8),
     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
   );
+}
+
+String emotionLabelFromSeq(int seq) {
+  switch (seq) {
+    case 1:
+      return '행복';
+    case 2:
+      return '슬픔';
+    case 3:
+      return '불안';
+    case 4:
+      return '분노';
+    case 5:
+      return '평온';
+    default:
+      return '행복';
+  }
 }

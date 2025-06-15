@@ -195,7 +195,7 @@ class SettingsScreen extends StatelessWidget {
                         ),
                       );
                       break;
-                    case '의견 보내기 / 도움 요청하기':
+                    case '의견 보내기':
                       Navigator.push(
                         context,
                         MaterialPageRoute(

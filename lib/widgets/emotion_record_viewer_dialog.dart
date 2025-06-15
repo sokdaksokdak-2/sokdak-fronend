@@ -241,24 +241,111 @@ class _EmotionRecordViewerDialogState extends State<EmotionRecordViewerDialog> {
                 ),
                 const SizedBox(height: 16),
                 Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
                   children: [
-                    ElevatedButton(
-                      onPressed: () => Navigator.pop(context),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.grey[500],
-                        foregroundColor: Colors.white,
+                    // 저장
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: () {
+                          // 저장 기능
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFFF3F3F3),
+                          elevation: 0,
+                          padding: const EdgeInsets.symmetric(vertical: 10),
+                          // ✅ 버튼 패딩 직접 지정
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: const [
+                            Icon(
+                              Icons.download,
+                              size: 16,
+                              color: Color(0xFF4E4E4E),
+                            ),
+                            SizedBox(width: 6),
+                            Text(
+                              '저장',
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: Color(0xFF4E4E4E),
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
-                      child: const Text('닫기'),
+                    ),
+
+                    const SizedBox(width: 8),
+
+                    // 공유
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: () {
+                          // 공유 기능
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFFF3F3F3),
+                          elevation: 0,
+                          padding: const EdgeInsets.symmetric(vertical: 10),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: const [
+                            Icon(
+                              Icons.share,
+                              size: 16,
+                              color: Color(0xFF4E4E4E),
+                            ),
+                            SizedBox(width: 6),
+                            Text(
+                              '공유',
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: Color(0xFF4E4E4E),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+
+                    const SizedBox(width: 8),
+
+                    // 닫기
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: () => Navigator.pop(context),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.grey[500],
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        child: const Text('닫기'),
+                      ),
                     ),
                     const SizedBox(width: 8),
-                    ElevatedButton(
-                      onPressed: widget.onAdd,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.black,
-                        foregroundColor: Colors.white,
+
+                    // 추가
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: widget.onAdd,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.black,
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        child: const Text('추가'),
                       ),
-                      child: const Text('추가'),
                     ),
                   ],
                 ),
