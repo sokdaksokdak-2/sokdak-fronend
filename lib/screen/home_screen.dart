@@ -9,6 +9,9 @@ import 'package:http/http.dart' as http;
 import 'package:sdsd/widgets/custom_header.dart';
 import 'package:sdsd/utils/bluetooth_controller_serial.dart';
 
+import '../services/chat_service.dart';
+import 'mission/mission_suggest_screen.dart';
+
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
@@ -94,32 +97,26 @@ class _HomeScreenState extends State<HomeScreen> {
       setState(() => isListening = false);
       _speech.stop();
       silenceTimer?.cancel();
-      if (conversationHistory.isNotEmpty) {
 
-        final now = DateTime.now();
-        final key = DateTime(now.year, now.month, now.day);
-
-        final summary = conversationHistory
-            .map((entry) => "나: ${entry['user']}\n속닥이: ${entry['bot']}")
-            .join('\n');
-
-        final latestEmotionSeq = conversationHistory.last['emotion_seq'];
-        final emotionPath = 'assets/emotions/${latestEmotionSeq}_emoji.png';
-
-        final record = EmotionRecordUI(
-          emotion: emotionPath,
-          title: '오늘의 감정 대화 요약',
-          content: summary,
+      // 서버에 대화 종료 요청 보내기
+      try {
+        final suggestion = await ChatService.completeChat();
+        if (!mounted) return;
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => MissionSuggestScreen(suggestion: suggestion),
+          ),
         );
-
-        emotionRecords.putIfAbsent(key, () => []).add(record);
-        conversationHistory.clear();
-
-        print('✅ 대화 종료: 요약 서버로 전송됨 (${summary.length}자)');
-
+      } catch (e) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('대화 요약 및 미션 제안 실패')),
+        );
       }
     }
   }
+
 
   void startListeningLoop() {
     if (!_speech.isAvailable || !isListening) return;
