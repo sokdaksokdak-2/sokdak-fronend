@@ -280,23 +280,26 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                 ),
                 Padding(
-                  padding: const EdgeInsets.only(bottom: 40),
+                  padding: const EdgeInsets.only(bottom: 20),
                   child: Stack(
                     alignment: Alignment.center,
                     children: [
-                      if (isListening)
-                        Positioned(
-                          child: SizedBox(
-                            width: 120,
-                            height: 120,
-                            child: Lottie.asset(
-                              'assets/lottie/mic.json',
-                              repeat: true,
-                              animate: true,
-                              errorBuilder: (context, error, stackTrace) => const SizedBox(),
-                            ),
+                      // ✅ 위치 고정 + 애니메이션만 보이게
+                      SizedBox(
+                        width: 120,
+                        height: 120,
+                        child: AnimatedOpacity(
+                          opacity: isListening ? 1.0 : 0.0,
+                          duration: const Duration(milliseconds: 300),
+                          child: Lottie.asset(
+                            'assets/lottie/mic.json',
+                            repeat: true,
+                            animate: true,
+                            errorBuilder: (context, error, stackTrace) => const SizedBox(),
                           ),
                         ),
+                      ),
+                      // 🎤 마이크 버튼
                       GestureDetector(
                         onTap: _toggleListening,
                         child: AnimatedContainer(
@@ -341,6 +344,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     ],
                   ),
                 ),
+
               ],
             ),
           ),
