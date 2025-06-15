@@ -1,23 +1,27 @@
 import 'package:flutter/material.dart';
+import 'package:sdsd/models/mission_suggestion.dart';
+import 'package:sdsd/screen/mission/mission_list_screen.dart';
+import 'package:sdsd/services/mission_service.dart';
 import 'package:sdsd/widgets/custom_header.dart';
 
+import '../../globals.dart';
+import '../../models/mission_list_item.dart';
+import '../main_screen.dart';
+import 'mission_start_screen.dart';
+
 class MissionSuggestScreen extends StatelessWidget {
-  final VoidCallback onStart;
-  final VoidCallback onRest;
-  final VoidCallback onViewList;
+  final MissionSuggestion suggestion;
 
   const MissionSuggestScreen({
     super.key,
-    required this.onStart,
-    required this.onRest,
-    required this.onViewList,
+    required this.suggestion,
   });
 
   @override
   Widget build(BuildContext context) {
-    const String currentEmotion = 'angry';
-    const String backPath = 'assets/back/';
-    const double headerHeight = 80;
+    final String emotion = _getEmotionName(suggestion.emotionSeq);
+    final String backImage = 'assets/back/${emotion}_back.png';
+    final String gifImage = 'assets/gif_1_1x/${emotion}3_1_1x.gif';
 
     return Scaffold(
       extendBodyBehindAppBar: true,
@@ -30,26 +34,13 @@ class MissionSuggestScreen extends StatelessWidget {
           children: [
             Positioned.fill(
               child: Image.asset(
-                'assets/gif_1_1x/angry3_1_1x.gif',
-                // 'assets/gif/sad3.gif',
-                // 'assets/gif_1_2x/sad3_1_2.gif',
-                // '${backPath}${currentEmotion}_back.png',
+                gifImage,
                 fit: BoxFit.cover,
               ),
             ),
-            // Positioned(
-            //   left: 0,
-            //   right: 0,
-            //   bottom: 50,
-            //   child: Image.asset(
-            //     'assets/images/$currentEmotion.png'
-            //     height: 330,
-            //     fit: BoxFit.contain,
-            //   ),
-            // ),
             Padding(
               padding: EdgeInsets.only(
-                top: MediaQuery.of(context).padding.top + headerHeight,
+                top: MediaQuery.of(context).padding.top + 80,
               ),
               child: Column(
                 children: [
@@ -76,9 +67,9 @@ class MissionSuggestScreen extends StatelessWidget {
                           ),
                         ],
                       ),
-                      child: const Text(
-                        '으~~ 듣는 내가 다 화나네\n열도 식힐 겸\n산책 한바퀴 어때?',
-                        style: TextStyle(fontSize: 20),
+                      child: Text(
+                        suggestion.content,
+                        style: const TextStyle(fontSize: 20),
                         textAlign: TextAlign.center,
                       ),
                     ),
@@ -95,8 +86,49 @@ class MissionSuggestScreen extends StatelessWidget {
                         SizedBox(
                           height: 50,
                           child: ElevatedButton(
-                            onPressed: onStart,
-                            style: ElevatedButton.styleFrom(
+                              onPressed: () async {
+                                try {
+                                  await MissionService.acceptMission(suggestion);
+
+                                  final item = MissionListItem(
+                                    memberMissionSeq: -1, // 서버에서 받은 값이 있으면 대체
+                                    title: suggestion.title,
+                                    content: suggestion.content,
+                                    completed: false,
+                                    emotionSeq: suggestion.emotionSeq,
+                                    emotionScore: suggestion.emotionScore,
+                                  );
+
+                                  Navigator.pushReplacement(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (_) => MissionStartScreen(
+                                        mission: item,
+                                        onCancel: () {
+                                          mainTabIndex.value = 2;
+                                          Navigator.of(context).pushAndRemoveUntil(
+                                            MaterialPageRoute(builder: (_) => const MainScreen()),
+                                                (route) => false,
+                                          );
+                                        },
+                                        onComplete: () {
+                                          Navigator.of(context).pushAndRemoveUntil(
+                                            MaterialPageRoute(builder: (_) => const MissionListScreen()),
+                                                (route) => false,
+                                          );
+                                        },
+                                      ),
+                                    ),
+                                  );
+                                } catch (e) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(content: Text('미션 수락 실패')),
+                                  );
+                                }
+                              },
+
+
+                              style: ElevatedButton.styleFrom(
                               backgroundColor: const Color(0xFF28B960),
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(30),
@@ -116,7 +148,9 @@ class MissionSuggestScreen extends StatelessWidget {
                         SizedBox(
                           height: 50,
                           child: ElevatedButton(
-                            onPressed: onViewList,
+                            onPressed: () {
+                              Navigator.pop(context); // 그냥 뒤로가기
+                            },
                             style: ElevatedButton.styleFrom(
                               backgroundColor: Colors.white,
                               foregroundColor: Colors.black,
@@ -144,5 +178,22 @@ class MissionSuggestScreen extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  String _getEmotionName(int seq) {
+    switch (seq) {
+      case 1:
+        return 'happy';
+      case 2:
+        return 'sad';
+      case 3:
+        return 'fear';
+      case 4:
+        return 'angry';
+      case 5:
+        return 'soso';
+      default:
+        return 'happy';
+    }
   }
 }

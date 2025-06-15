@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:sdsd/screen/calendar/calendar_screen.dart';
 import 'package:sdsd/screen/home_screen.dart';
+import 'package:sdsd/screen/mission/mission_list_screen.dart';
 import 'package:sdsd/screen/mission/mission_tab_screen.dart';
 import 'package:sdsd/screen/report_screen.dart';
 import 'package:sdsd/screen/settings_screen.dart';
@@ -29,7 +30,8 @@ class _MainScreenState extends State<MainScreen> {
       CalendarScreen(),
       ReportScreen(),
       HomeScreen(),
-      MissionTabScreen(),
+      // MissionTabScreen(),
+      MissionListScreen(),
       SettingsScreen(),
     ];
   }

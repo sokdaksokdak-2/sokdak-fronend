@@ -1,20 +1,35 @@
 import 'package:flutter/material.dart';
 import 'package:sdsd/widgets/custom_header.dart';
+import '../../models/mission_list_item.dart';
 
 class MissionStartScreen extends StatelessWidget {
+  final MissionListItem mission;
   final VoidCallback onCancel;
-  final VoidCallback onViewList; // ✅ 추가: 미션 리스트로 이동할 콜백
+  final VoidCallback onComplete;
 
   const MissionStartScreen({
     super.key,
+    required this.mission,
     required this.onCancel,
-    required this.onViewList,
+    required this.onComplete,
   });
+
+  String getEmotionName(int seq) {
+    switch (seq) {
+      case 1: return 'happy';
+      case 2: return 'sad';
+      case 3: return 'fear';
+      case 4: return 'angry';
+      case 5: return 'soso';
+      default: return 'happy';
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    const String currentEmotion = 'fear';
-    const String backPath = 'assets/back/';
+    final String emotion = getEmotionName(mission.emotionSeq);
+    final String backImage = 'assets/back/${emotion}_back.png';
+    final String characterImage = 'assets/images/$emotion.png';
     const double headerHeight = 80;
 
     return Scaffold(
@@ -24,33 +39,33 @@ class MissionStartScreen extends StatelessWidget {
       body: SafeArea(
         top: false,
         bottom: false,
-        left: false,
-        right: false,
         child: Stack(
           children: [
+            // 배경 이미지
             Positioned.fill(
               child: Image.asset(
-                '${backPath}${currentEmotion}_back.png',
+                backImage,
                 fit: BoxFit.fill,
               ),
             ),
+
+            // 캐릭터 이미지
             Positioned(
               left: 0,
               right: 0,
               bottom: 50,
               child: Image.asset(
-                'assets/images/$currentEmotion.png',
+                characterImage,
                 height: 330,
-                fit: BoxFit.contain,
-                alignment: Alignment.bottomCenter,
               ),
             ),
+
+            // 본문과 버튼
             Padding(
               padding: EdgeInsets.only(
                 top: MediaQuery.of(context).padding.top + headerHeight,
               ),
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
                   const Text(
                     '미션 시작',
@@ -60,7 +75,6 @@ class MissionStartScreen extends StatelessWidget {
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 50),
                     child: Container(
-                      width: double.infinity,
                       padding: const EdgeInsets.symmetric(
                         vertical: 30,
                         horizontal: 20,
@@ -76,28 +90,25 @@ class MissionStartScreen extends StatelessWidget {
                           ),
                         ],
                       ),
-                      child: const Text(
-                        '차분한 음악과 함께\n산책하면서\n초록색 물건 3개 찾기!\n시~작',
-                        style: TextStyle(fontSize: 20),
+                      child: Text(
+                        mission.content,
+                        style: const TextStyle(fontSize: 20),
                         textAlign: TextAlign.center,
                       ),
                     ),
                   ),
                   const Spacer(),
                   Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 60,
-                      vertical: 30,
-                    ),
+                    padding: const EdgeInsets.symmetric(horizontal: 60, vertical: 30),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
                         SizedBox(
                           height: 50,
                           child: ElevatedButton(
-                            onPressed: onViewList, // ✅ 미션 완료하면 리스트로
+                            onPressed: onComplete,
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: Color(0xFF28B960),
+                              backgroundColor: const Color(0xFF28B960),
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(30),
                               ),
@@ -116,7 +127,7 @@ class MissionStartScreen extends StatelessWidget {
                         SizedBox(
                           height: 50,
                           child: ElevatedButton(
-                            onPressed: onCancel, // ✅ 그만둘래는 기존대로
+                            onPressed: onCancel,
                             style: ElevatedButton.styleFrom(
                               backgroundColor: Colors.white,
                               foregroundColor: Colors.black,

@@ -9,6 +9,9 @@ import 'package:http/http.dart' as http;
 import 'package:sdsd/widgets/custom_header.dart';
 import 'package:sdsd/utils/bluetooth_controller_serial.dart';
 
+import '../services/chat_service.dart';
+import 'mission/mission_suggest_screen.dart';
+
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
@@ -97,30 +100,27 @@ class _HomeScreenState extends State<HomeScreen> {
       setState(() => isListening = false);
       _speech.stop();
       silenceTimer?.cancel();
-      if (conversationHistory.isNotEmpty) {
-        final now = DateTime.now();
-        final key = DateTime(now.year, now.month, now.day);
 
-        final summary = conversationHistory
-            .map((entry) => "나: ${entry['user']}\n속닥이: ${entry['bot']}")
-            .join('\n');
-
-        final latestEmotionSeq = conversationHistory.last['emotion_seq'];
-        final emotionPath = 'assets/emotions/${latestEmotionSeq}_emoji.png';
-
-        final record = EmotionRecordUI(
-          emotion: emotionPath,
-          title: '오늘의 감정 대화 요약',
-          content: summary,
+      // 서버에 대화 종료 요청 보내기
+      try {
+        final suggestion = await ChatService.completeChat();
+        if (!mounted) return;
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => MissionSuggestScreen(suggestion: suggestion),
+          ),
         );
-
-        emotionRecords.putIfAbsent(key, () => []).add(record);
-        conversationHistory.clear();
-
-        print('✅ 대화 종료: 요약 서버로 전송됨 (${summary.length}자)');
+      } catch (e) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('대화 요약 및 미션 제안 실패')),
+        );
       }
     }
   }
+
+
   void startListeningLoop() {
     if (!_speech.isAvailable || !isListening) return;
     _speech.listen(
@@ -134,11 +134,7 @@ class _HomeScreenState extends State<HomeScreen> {
         }
         silenceTimer = Timer(const Duration(milliseconds: 1500), () async {
           await sendTextToServer(spokenText);
-          if (isListening)
-            Future.delayed(
-              const Duration(milliseconds: 300),
-              startListeningLoop,
-            );
+          if (isListening) Future.delayed(const Duration(milliseconds: 300), startListeningLoop);
         });
       },
       pauseFor: const Duration(seconds: 8),
@@ -153,10 +149,7 @@ class _HomeScreenState extends State<HomeScreen> {
       final response = await http.post(
         uri,
         headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          'user_message': text,
-          'member_seq': Config.memberSeq,
-        }),
+        body: jsonEncode({'user_message': text, 'member_seq': Config.memberSeq}),
       );
       if (response.statusCode == 200) {
         final data = jsonDecode(utf8.decode(response.bodyBytes));
@@ -186,12 +179,7 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  void updateEmotionState(
-    int seq,
-    int score,
-    String chatbotMessage,
-    String userMessage,
-  ) {
+  void updateEmotionState(int seq, int score, String chatbotMessage, String userMessage) {
     final emotionName = emotionMap[seq] ?? 'happy';
     setState(() {
       gifImage = 'assets/gif_1_1x/${emotionName}${score}_1_1x.gif';
@@ -199,11 +187,7 @@ class _HomeScreenState extends State<HomeScreen> {
       serverResponse = chatbotMessage;
       isFirstMessage = false;
     });
-    conversationHistory.add({
-      'user': userMessage,
-      'bot': chatbotMessage,
-      'emotion_seq': seq,
-    });
+    conversationHistory.add({'user': userMessage, 'bot': chatbotMessage, 'emotion_seq': seq});
     final colorCode = getColorCodeByEmotionSeq(seq);
     _bluetoothController?.sendEmotionColor(colorCode);
     _previousEmotionSeq = seq;
@@ -253,9 +237,7 @@ class _HomeScreenState extends State<HomeScreen> {
         children: [
           AnimatedSwitcher(
             duration: const Duration(milliseconds: 600),
-            transitionBuilder:
-                (child, animation) =>
-                    FadeTransition(opacity: animation, child: child),
+            transitionBuilder: (child, animation) => FadeTransition(opacity: animation, child: child),
             child: Image.asset(
               gifImage,
               key: ValueKey(gifImage),
@@ -298,88 +280,65 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                 ),
                 Padding(
-                  padding: const EdgeInsets.only(bottom: 15),
-                  child: SizedBox(
-                    width: 150,
-                    height: 150,
-                    child: Stack(
-                      alignment: Alignment.center,
-                      children: [
-                        if (isListening)
-                          SizedBox(
+                  padding: const EdgeInsets.only(bottom: 40),
+                  child: Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      if (isListening)
+                        Positioned(
+                          child: SizedBox(
                             width: 120,
                             height: 120,
-                            child: IgnorePointer(
-                              child: Lottie.asset(
-                                'assets/lottie/mic.json',
-                                repeat: true,
-                                animate: true,
-                                fit: BoxFit.cover,
-                              ),
-                            ),
-                          ),
-                        GestureDetector(
-                          onTap: _toggleListening,
-                          child: AnimatedContainer(
-                            duration: const Duration(milliseconds: 150),
-                            width: 60,
-                            height: 60,
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              gradient:
-                                  isListening
-                                      ? const LinearGradient(
-                                        colors: [
-                                          Color(0xFFBDBDBD),
-                                          Color(0xFF8E8E8E),
-                                        ],
-                                        begin: Alignment.topLeft,
-                                        end: Alignment.bottomRight,
-                                      )
-                                      : const LinearGradient(
-                                        colors: [
-                                          Color(0xFFDADADA),
-                                          Color(0xFFAAAAAA),
-                                        ],
-                                        begin: Alignment.topLeft,
-                                        end: Alignment.bottomRight,
-                                      ),
-                              boxShadow: [
-                                BoxShadow(
-                                  color:
-                                      isListening
-                                          ? Colors.white
-                                          : Colors.black26,
-                                  offset:
-                                      isListening
-                                          ? const Offset(-2, -2)
-                                          : const Offset(4, 4),
-                                  blurRadius: isListening ? 2 : 8,
-                                ),
-                                BoxShadow(
-                                  color:
-                                      isListening
-                                          ? Colors.black26
-                                          : Colors.white,
-                                  offset:
-                                      isListening
-                                          ? const Offset(2, 2)
-                                          : const Offset(-4, -4),
-                                  blurRadius: isListening ? 2 : 8,
-                                ),
-                              ],
-                            ),
-                            child: const Center(
-                              child: Icon(
-                                Icons.mic,
-                                size: 45,
-                                color: Colors.black,
-                              ),
+                            child: Lottie.asset(
+                              'assets/lottie/mic.json',
+                              repeat: true,
+                              animate: true,
+                              errorBuilder: (context, error, stackTrace) => const SizedBox(),
                             ),
                           ),
                         ),
-                      ],
-                    ),
+                      GestureDetector(
+                        onTap: _toggleListening,
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 150),
+                          width: 60,
+                          height: 60,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            gradient: isListening
+                                ? const LinearGradient(
+                              colors: [Color(0xFFBDBDBD), Color(0xFF8E8E8E)],
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                            )
+                                : const LinearGradient(
+                              colors: [Color(0xFFDADADA), Color(0xFFAAAAAA)],
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                            ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: isListening ? Colors.white : Colors.black26,
+                                offset: isListening ? const Offset(-2, -2) : const Offset(4, 4),
+                                blurRadius: isListening ? 2 : 8,
+                              ),
+                              BoxShadow(
+                                color: isListening ? Colors.black26 : Colors.white,
+                                offset: isListening ? const Offset(2, 2) : const Offset(-4, -4),
+                                blurRadius: isListening ? 2 : 8,
+                              ),
+                            ],
+                          ),
+                          child: const Center(
+                            child: Icon(
+                              Icons.mic,
+                              size: 45,
+                              color: Colors.black,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ],
