@@ -102,9 +102,6 @@ flutter:
     - assets/emotions/
     - assets/lottie/
     - assets/back/
-    - assets/gif/
-    - assets/gif_slow/
-    - assets/gif_1_2x/
     - assets/gif_1_1x/
   #   - images/a_dot_ham.jpeg
 

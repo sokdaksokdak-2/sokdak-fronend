@@ -36,6 +36,9 @@ class _HomeScreenState extends State<HomeScreen> {
   String backgroundImage = 'assets/back/happy_back.png';
   String gifImage = 'assets/gif_1_1x/happy1_1_1x.gif';
 
+  // 로딩 상태 변수
+  bool isLoading = false;
+
   final Map<int, String> emotionMap = {
     1: 'happy',
     2: 'sad',
@@ -97,25 +100,24 @@ class _HomeScreenState extends State<HomeScreen> {
         startListeningLoop();
       }
     } else {
-      setState(() => isListening = false);
+      // 서버 호출 전 로딩 시작
+      setState(() {
+        isListening = false;
+        isLoading = true;
+      });
+
       _speech.stop();
       silenceTimer?.cancel();
 
-      // 서버에 대화 종료 요청 보내기
       try {
         final suggestion = await ChatService.completeChat();
         if (!mounted) return;
-        // Navigator.push(
-        //   context,
-        //   MaterialPageRoute(
-        //     builder: (_) => MissionSuggestScreen(suggestion: suggestion),
-        //   ),
-        // );
-        final currentContext = context; // ✅ context 백업
 
-        // ✅ 안전하게 다음 프레임에서 push
+        // 서버 응답 후 로딩 종료
+        setState(() => isLoading = false);
+
         WidgetsBinding.instance.addPostFrameCallback((_) {
-          Navigator.of(currentContext).push(
+          Navigator.of(context).push(
             MaterialPageRoute(
               builder: (_) => MissionSuggestScreen(suggestion: suggestion),
             ),
@@ -123,13 +125,16 @@ class _HomeScreenState extends State<HomeScreen> {
         });
       } catch (e) {
         if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('대화 요약 및 미션 제안 실패')),
-        );
+
+        // 에러 시에도 로딩 종료
+        setState(() => isLoading = false);
+
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('대화 요약 및 미션 제안 실패')));
       }
     }
   }
-
 
   void startListeningLoop() {
     if (!_speech.isAvailable || !isListening) return;
@@ -144,7 +149,12 @@ class _HomeScreenState extends State<HomeScreen> {
         }
         silenceTimer = Timer(const Duration(milliseconds: 1200), () async {
           await sendTextToServer(spokenText);
-          if (isListening) Future.delayed(const Duration(milliseconds: 300), startListeningLoop);
+          if (isListening) {
+            Future.delayed(
+              const Duration(milliseconds: 300),
+              startListeningLoop,
+            );
+          }
         });
       },
       pauseFor: const Duration(seconds: 60),
@@ -152,14 +162,16 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-
   Future<void> sendTextToServer(String text) async {
     final uri = Uri.parse('${Config.baseUrl}/api/chatbot/chat');
     try {
       final response = await http.post(
         uri,
         headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({'user_message': text, 'member_seq': Config.memberSeq}),
+        body: jsonEncode({
+          'user_message': text,
+          'member_seq': Config.memberSeq,
+        }),
       );
       if (response.statusCode == 200) {
         final data = jsonDecode(utf8.decode(response.bodyBytes));
@@ -189,7 +201,12 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  void updateEmotionState(int seq, int score, String chatbotMessage, String userMessage) {
+  void updateEmotionState(
+    int seq,
+    int score,
+    String chatbotMessage,
+    String userMessage,
+  ) {
     final emotionName = emotionMap[seq] ?? 'happy';
     setState(() {
       gifImage = 'assets/gif_1_1x/${emotionName}${score}_1_1x.gif';
@@ -197,7 +214,11 @@ class _HomeScreenState extends State<HomeScreen> {
       serverResponse = chatbotMessage;
       isFirstMessage = false;
     });
-    conversationHistory.add({'user': userMessage, 'bot': chatbotMessage, 'emotion_seq': seq});
+    conversationHistory.add({
+      'user': userMessage,
+      'bot': chatbotMessage,
+      'emotion_seq': seq,
+    });
     final colorCode = getColorCodeByEmotionSeq(seq);
     _bluetoothController?.sendEmotionColor(colorCode);
     _previousEmotionSeq = seq;
@@ -223,143 +244,192 @@ class _HomeScreenState extends State<HomeScreen> {
   String getColorCodeByEmotionSeq(int seq) {
     switch (seq) {
       case 1:
-        return 'FF69B4'; // 기쁨
+        return 'FFEB3B';
       case 2:
-        return 'FFA500'; // 슬픔
+        return '1565C0';
       case 3:
-        return '90EE90'; // 불안
+        return 'FF6F00';
       case 4:
-        return '006400'; // 화남
+        return 'FF2400';
       case 5:
-        return '87CEFA'; // 평온
+        return '4CAF50';
       default:
-        return 'FF69B4'; // 기쁨
+        return 'FFEB3B';
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      extendBodyBehindAppBar: true,
-      backgroundColor: Colors.black,
-      appBar: const CustomHeader(),
-      body: Stack(
-        children: [
-          AnimatedSwitcher(
-            duration: const Duration(milliseconds: 600),
-            transitionBuilder: (child, animation) => FadeTransition(opacity: animation, child: child),
-            child: Image.asset(
-              gifImage,
-              key: ValueKey(gifImage),
-              fit: BoxFit.cover,
-              width: double.infinity,
-              height: double.infinity,
-            ),
-          ),
-          SafeArea(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Padding(
-                  padding: const EdgeInsets.only(top: 30, left: 40, right: 40),
-                  child: AnimatedSwitcher(
-                    duration: const Duration(milliseconds: 300),
-                    child: Container(
-                      key: ValueKey(serverResponse),
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(20),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.92),
-                        borderRadius: BorderRadius.circular(30),
-                        boxShadow: const [
-                          BoxShadow(
-                            color: Colors.black12,
-                            blurRadius: 6,
-                            offset: Offset(0, 3),
-                          ),
-                        ],
-                      ),
-                      child: Text(
-                        isFirstMessage
-                            ? '안녕 ${Config.nickname.isNotEmpty ? Config.nickname : '속닥'}!\n오늘 하루는 어땠어??'
-                            : serverResponse,
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(fontSize: 20),
-                      ),
-                    ),
-                  ),
+    return Stack(
+      children: [
+        Scaffold(
+          extendBodyBehindAppBar: true,
+          backgroundColor: Colors.black,
+          appBar: const CustomHeader(),
+          body: Stack(
+            children: [
+              AnimatedSwitcher(
+                duration: const Duration(milliseconds: 600),
+                transitionBuilder:
+                    (child, animation) =>
+                        FadeTransition(opacity: animation, child: child),
+                child: Image.asset(
+                  gifImage,
+                  key: ValueKey(gifImage),
+                  fit: BoxFit.cover,
+                  width: double.infinity,
+                  height: double.infinity,
                 ),
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 20),
-                  child: Stack(
-                    alignment: Alignment.center,
-                    children: [
-                      // ✅ 위치 고정 + 애니메이션만 보이게
-                      SizedBox(
-                        width: 120,
-                        height: 120,
-                        child: AnimatedOpacity(
-                          opacity: isListening ? 1.0 : 0.0,
-                          duration: const Duration(milliseconds: 300),
-                          child: Lottie.asset(
-                            'assets/lottie/mic.json',
-                            repeat: true,
-                            animate: true,
-                            errorBuilder: (context, error, stackTrace) => const SizedBox(),
-                          ),
-                        ),
+              ),
+              SafeArea(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.only(
+                        top: 30,
+                        left: 40,
+                        right: 40,
                       ),
-                      // 🎤 마이크 버튼
-                      GestureDetector(
-                        onTap: _toggleListening,
-                        child: AnimatedContainer(
-                          duration: const Duration(milliseconds: 150),
-                          width: 60,
-                          height: 60,
+                      child: AnimatedSwitcher(
+                        duration: const Duration(milliseconds: 300),
+                        child: Container(
+                          key: ValueKey(serverResponse),
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(20),
                           decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            gradient: isListening
-                                ? const LinearGradient(
-                              colors: [Color(0xFFBDBDBD), Color(0xFF8E8E8E)],
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                            )
-                                : const LinearGradient(
-                              colors: [Color(0xFFDADADA), Color(0xFFAAAAAA)],
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                            ),
-                            boxShadow: [
+                            color: Colors.white.withOpacity(0.92),
+                            borderRadius: BorderRadius.circular(30),
+                            boxShadow: const [
                               BoxShadow(
-                                color: isListening ? Colors.white : Colors.black26,
-                                offset: isListening ? const Offset(-2, -2) : const Offset(4, 4),
-                                blurRadius: isListening ? 2 : 8,
-                              ),
-                              BoxShadow(
-                                color: isListening ? Colors.black26 : Colors.white,
-                                offset: isListening ? const Offset(2, 2) : const Offset(-4, -4),
-                                blurRadius: isListening ? 2 : 8,
+                                color: Colors.black12,
+                                blurRadius: 6,
+                                offset: Offset(0, 3),
                               ),
                             ],
                           ),
-                          child: const Center(
-                            child: Icon(
-                              Icons.mic,
-                              size: 45,
-                              color: Colors.black,
-                            ),
+                          child: Text(
+                            isFirstMessage
+                                ? '안녕 ${Config.nickname.isNotEmpty ? Config.nickname : '속닥'}!\n오늘 하루는 어땠어??'
+                                : serverResponse,
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(fontSize: 20),
                           ),
                         ),
                       ),
-                    ],
-                  ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 20),
+                      child: Stack(
+                        alignment: Alignment.center,
+                        children: [
+                          SizedBox(
+                            width: 120,
+                            height: 120,
+                            child: AnimatedOpacity(
+                              opacity: isListening ? 1.0 : 0.0,
+                              duration: const Duration(milliseconds: 300),
+                              child: Lottie.asset(
+                                'assets/lottie/mic.json',
+                                repeat: true,
+                                animate: true,
+                              ),
+                            ),
+                          ),
+                          GestureDetector(
+                            onTap: _toggleListening,
+                            child: AnimatedContainer(
+                              duration: const Duration(milliseconds: 150),
+                              width: 60,
+                              height: 60,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                gradient:
+                                    isListening
+                                        ? const LinearGradient(
+                                          colors: [
+                                            Color(0xFFBDBDBD),
+                                            Color(0xFF8E8E8E),
+                                          ],
+                                          begin: Alignment.topLeft,
+                                          end: Alignment.bottomRight,
+                                        )
+                                        : const LinearGradient(
+                                          colors: [
+                                            Color(0xFFDADADA),
+                                            Color(0xFFAAAAAA),
+                                          ],
+                                          begin: Alignment.topLeft,
+                                          end: Alignment.bottomRight,
+                                        ),
+                                boxShadow:
+                                    isListening
+                                        ? [
+                                          BoxShadow(
+                                            color: Colors.white,
+                                            offset: Offset(-2, -2),
+                                            blurRadius: 2,
+                                          ),
+                                          BoxShadow(
+                                            color: Colors.black26,
+                                            offset: Offset(2, 2),
+                                            blurRadius: 2,
+                                          ),
+                                        ]
+                                        : [
+                                          BoxShadow(
+                                            color: Colors.black26,
+                                            offset: Offset(4, 4),
+                                            blurRadius: 8,
+                                          ),
+                                          BoxShadow(
+                                            color: Colors.white,
+                                            offset: Offset(-4, -4),
+                                            blurRadius: 8,
+                                          ),
+                                        ],
+                              ),
+                              child: const Center(
+                                child: Icon(
+                                  Icons.mic,
+                                  size: 45,
+                                  color: Colors.black,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
-
-              ],
-            ),
+              ),
+            ],
           ),
-        ],
-      ),
+        ),
+        // 로딩 오버레이
+        // 수정된 로딩 오버레이: Spinner 아래에 텍스트 추가
+         if (isLoading)
+           Positioned.fill(
+             child: Container(
+               color: Colors.black45,
+               child: Column(
+                 mainAxisAlignment: MainAxisAlignment.center,
+                 children: const [
+                   CircularProgressIndicator(),
+                   SizedBox(height: 16),
+                   Text(
+                     '미션 생성중...',
+                     style: TextStyle(
+                       color: Colors.white,
+                       fontSize: 16,
+                     ),
+               ),
+             ],
+           ),
+         ),
+       ),
+      ],
     );
   }
 }
