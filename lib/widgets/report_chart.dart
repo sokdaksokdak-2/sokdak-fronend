@@ -14,35 +14,37 @@ class ReportChart extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final sections = emotionDistribution.entries.map((entry) {
-      final info = kEmotionInfoMap[entry.key]!;
-      return PieChartSectionData(
-        value: entry.value,
-        color: info.color,
-        title: '${entry.value.toInt()}%',
-      );
-    }).toList();
+    final sections =
+        emotionDistribution.entries.map((entry) {
+          final info = kEmotionInfoMap[entry.key]!;
+          return PieChartSectionData(
+            value: entry.value,
+            color: info.color,
+            title: '${(entry.value * 100).round()}%', // .round()로 반올림 .toInt() 내림
+          );
+        }).toList();
 
-    final legends = emotionDistribution.keys.map((key) {
-      final info = kEmotionInfoMap[key]!;
-      return Padding(
-        padding: const EdgeInsets.symmetric(vertical: 6),
-        child: Row(
-          children: [
-            Container(
-              width: 12,
-              height: 12,
-              decoration: BoxDecoration(
-                color: info.color,
-                shape: BoxShape.circle,
-              ),
+    final legends =
+        emotionDistribution.keys.map((key) {
+          final info = kEmotionInfoMap[key]!;
+          return Padding(
+            padding: const EdgeInsets.symmetric(vertical: 6),
+            child: Row(
+              children: [
+                Container(
+                  width: 12,
+                  height: 12,
+                  decoration: BoxDecoration(
+                    color: info.color,
+                    shape: BoxShape.circle,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Text(info.label, style: const TextStyle(fontSize: 14)),
+              ],
             ),
-            const SizedBox(width: 8),
-            Text(info.label, style: const TextStyle(fontSize: 14)),
-          ],
-        ),
-      );
-    }).toList();
+          );
+        }).toList();
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -58,10 +60,7 @@ class ReportChart extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: const [
-              Text(
-                '이번달 감정온도',
-                style: TextStyle(fontWeight: FontWeight.bold),
-              ),
+              Text('이번달 감정온도', style: TextStyle(fontWeight: FontWeight.bold)),
               Text(
                 '36.5℃',
                 style: TextStyle(
@@ -99,7 +98,7 @@ class ReportChart extends StatelessWidget {
                   ),
                 ),
               ),
-              const SizedBox(width: 24),
+              const SizedBox(width: 40),
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: legends,

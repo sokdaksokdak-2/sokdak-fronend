@@ -142,12 +142,12 @@ class _HomeScreenState extends State<HomeScreen> {
           startListeningLoop();
           return;
         }
-        silenceTimer = Timer(const Duration(milliseconds: 1500), () async {
+        silenceTimer = Timer(const Duration(milliseconds: 1200), () async {
           await sendTextToServer(spokenText);
           if (isListening) Future.delayed(const Duration(milliseconds: 300), startListeningLoop);
         });
       },
-      pauseFor: const Duration(seconds: 8),
+      pauseFor: const Duration(seconds: 60),
       listenFor: const Duration(minutes: 1),
     );
   }

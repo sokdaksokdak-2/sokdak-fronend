@@ -39,19 +39,59 @@ class _EmotionRecordViewerDialogState extends State<EmotionRecordViewerDialog> {
       context: context,
       builder:
           (_) => AlertDialog(
-            title: const Text('정말 삭제하시겠어요?'),
-            content: const Text('이 감정 기록은 삭제 후 복구할 수 없습니다.'),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context, false),
-                child: const Text('취소'),
-              ),
-              TextButton(
-                onPressed: () => Navigator.pop(context, true),
-                child: const Text('삭제', style: TextStyle(color: Colors.red)),
-              ),
-            ],
+        backgroundColor: Colors.white,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20), // 둥글게
+        ),
+        elevation: 8,
+        title: const Text(
+          '정말 삭제하시겠어요?',
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            fontSize: 18,
+            color: Colors.black87,
           ),
+          textAlign: TextAlign.center,
+        ),
+        content: const Text(
+          '이 감정 기록은 삭제 후 \n복구할 수 없습니다.',
+          style: TextStyle(color: Colors.black54, fontSize: 15),
+          textAlign: TextAlign.center,
+        ),
+        actionsAlignment: MainAxisAlignment.end, // ★ 여기만 변경!
+        actionsPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        actions: [
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.grey[200], // 연회색 배경
+              foregroundColor: Colors.black87,   // 검정 글씨
+              minimumSize: const Size(80, 40),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+              elevation: 0,
+            ),
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('취소'),
+          ),
+          // const SizedBox(width: 8),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Color(0xFF28B960), // 녹색
+              foregroundColor: Colors.white,      // 흰색 글씨
+              minimumSize: const Size(80, 40),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+              elevation: 0,
+            ),
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('삭제'),
+          ),
+        ],
+      )
+
+
     );
     if (ok != true) return;
 

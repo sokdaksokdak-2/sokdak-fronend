@@ -36,24 +36,39 @@ class _ReportScreenState extends State<ReportScreen> {
     final memberSeq = Config.memberSeq;
 
     try {
-      final response = await Dio().get(
+      final response = await Dio().post(
         '${Config.baseUrl}/api/emo_report/',
-        queryParameters: {
-          'year': year,
-          'month': month,
-          'member_seq': memberSeq,
-        },
+        data: {'year': year, 'month': month, 'member_seq': memberSeq},
         options: Options(validateStatus: (_) => true),
       );
 
       print('📦 statusCode: ${response.statusCode}');
 
       if (response.statusCode == 200) {
-        final data =
-            response.data['emotion_distribution'] as Map<String, dynamic>;
-        final parsed = data.map(
-          (k, v) => MapEntry(int.parse(k), (v as num).toDouble()),
-        );
+        final data = response.data['emotion_distribution'];
+        print('📦 emotion_distribution raw: $data');
+
+        // 데이터가 null이거나 Map이 아니면 에러 처리
+        if (data == null || data is! Map) {
+          print('❌ emotion_distribution이 없음 또는 타입이 Map이 아님');
+          setState(() {
+            emotionDistribution = {};
+            topEmotions = [];
+            emotionTemperature = 0.0;
+          });
+          return;
+        }
+
+        // 안전하게 int/double로 변환
+        final parsed = <int, double>{};
+        data.forEach((key, value) {
+          final intKey = int.tryParse(key.toString()) ?? -1;
+          final doubleValue =
+              value is num
+                  ? value.toDouble()
+                  : double.tryParse(value.toString()) ?? 0.0;
+          if (intKey != -1) parsed[intKey] = doubleValue;
+        });
 
         final sortedEmotions =
             parsed.entries.toList()..sort((a, b) => b.value.compareTo(a.value));
@@ -141,23 +156,14 @@ class _ReportScreenState extends State<ReportScreen> {
                     ),
                   ),
                   Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: Container(
-                      margin: const EdgeInsets.only(top: 24),
-                      padding: const EdgeInsets.all(24),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(16),
-                        boxShadow: [
-                          BoxShadow(color: Colors.black12, blurRadius: 8),
-                        ],
-                      ),
-                      child: Image.asset(
-                        'assets/images/report2.png',
-                        fit: BoxFit.contain,
-                      ),
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 24), // margin 대체
+                    child: Image.asset(
+                      'assets/images/report2.png',
+                      width: MediaQuery.of(context).size.width * 0.75,
+                      fit: BoxFit.contain,
                     ),
                   ),
+
                 ],
               ),
             ),
