@@ -5,7 +5,6 @@ class Config {
   // ✅ 개발 중엔 이걸 사용
   // static const String baseUrl = 'http://192.168.0.199:8000';
 
-  // static const String baseUrl = 'http://192.168.219.245:8000';
 
   static const String baseUrl = 'http://sokdak.kro.kr';
 
