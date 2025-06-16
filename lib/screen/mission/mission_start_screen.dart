@@ -55,10 +55,10 @@ class MissionStartScreen extends StatelessWidget {
             Positioned(
               left: 0,
               right: 0,
-              bottom: 50,
+              bottom: 180,
               child: Image.asset(
                 characterImage,
-                height: 330,
+                height: 350,
               ),
             ),
 

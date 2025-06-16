@@ -1,14 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:sdsd/models/mission_suggestion.dart';
-import 'package:sdsd/screen/mission/mission_list_screen.dart';
+import 'package:sdsd/screen/mission/mission_ready_screen.dart';
 import 'package:sdsd/services/mission_service.dart';
 import 'package:sdsd/widgets/custom_header.dart';
 
-import '../../globals.dart';
 import '../../models/mission_list_item.dart';
-import '../main_screen.dart';
-import 'mission_ready_screen.dart';
-import 'mission_start_screen.dart';
 
 class MissionSuggestScreen extends StatelessWidget {
   final MissionSuggestion suggestion;
@@ -21,8 +17,10 @@ class MissionSuggestScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final String emotion = _getEmotionName(suggestion.emotionSeq);
+    // 배경 이미지 경로
     final String backImage = 'assets/back/${emotion}_back.png';
-    final String gifImage = 'assets/gif_1_1x/${emotion}3_1_1x.gif';
+    // 캐릭터(정지 이미지) 경로로 변경
+    final String characterImage = 'assets/images/$emotion.png';
 
     return Scaffold(
       extendBodyBehindAppBar: true,
@@ -33,10 +31,22 @@ class MissionSuggestScreen extends StatelessWidget {
         bottom: false,
         child: Stack(
           children: [
+            // 배경
             Positioned.fill(
               child: Image.asset(
-                gifImage,
+                backImage,
                 fit: BoxFit.cover,
+              ),
+            ),
+            // 캐릭터 이미지 추가
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: 180,
+              child: Image.asset(
+                characterImage,
+                // fit: BoxFit.contain,
+                height: 350,
               ),
             ),
             Padding(
@@ -87,49 +97,48 @@ class MissionSuggestScreen extends StatelessWidget {
                         SizedBox(
                           height: 50,
                           child: ElevatedButton(
-                              onPressed: () async {
-                                final currentContext = context;
-                                try {
-                                  final memberMissionSeq = await MissionService.acceptMission(suggestion);
+                            onPressed: () async {
+                              final currentContext = context;
+                              try {
+                                final memberMissionSeq = await MissionService.acceptMission(suggestion);
 
-                                  final item = MissionListItem(
-                                    memberMissionSeq: memberMissionSeq,
-                                    title: suggestion.title,
-                                    content: suggestion.content,
-                                    completed: false,
-                                    emotionSeq: suggestion.emotionSeq,
-                                    emotionScore: suggestion.emotionScore,
-                                  );
+                                final item = MissionListItem(
+                                  memberMissionSeq: memberMissionSeq,
+                                  title: suggestion.title,
+                                  content: suggestion.content,
+                                  completed: false,
+                                  emotionSeq: suggestion.emotionSeq,
+                                  emotionScore: suggestion.emotionScore,
+                                );
 
-                                  WidgetsBinding.instance.addPostFrameCallback((_) {
-                                    Navigator.pushReplacement(
-                                      context,
-                                      MaterialPageRoute(
-                                        builder: (_) => MissionReadyScreen(
-                                          mission: item,
-                                          onCancel: () async {
-                                            Navigator.of(context).pushNamedAndRemoveUntil('/main', (r) => false);
-                                          },
-                                          onComplete: () async {
-                                            try {
-                                              await MissionService.completeMission(memberMissionSeq); // ✅ 여기에 완료 처리!
-                                            } catch (e) {
-                                              debugPrint('미션 완료 실패: $e');
-                                            }
-                                          }, // context 안 쓰게 비워둠
-                                        ),
+                                WidgetsBinding.instance.addPostFrameCallback((_) {
+                                  Navigator.pushReplacement(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (_) => MissionReadyScreen(
+                                        mission: item,
+                                        onCancel: () async {
+                                          Navigator.of(context).pushNamedAndRemoveUntil('/main', (r) => false);
+                                        },
+                                        onComplete: () async {
+                                          try {
+                                            await MissionService.completeMission(memberMissionSeq);
+                                          } catch (e) {
+                                            debugPrint('미션 완료 실패: $e');
+                                          }
+                                        },
                                       ),
-                                    );
-                                  });
-
-                                } catch (e) {
-                                  ScaffoldMessenger.of(currentContext).showSnackBar(
-                                    const SnackBar(content: Text('미션 수락 실패')),
+                                    ),
                                   );
-                                }
-                              },
+                                });
 
-                              style: ElevatedButton.styleFrom(
+                              } catch (e) {
+                                ScaffoldMessenger.of(currentContext).showSnackBar(
+                                  const SnackBar(content: Text('미션 수락 실패')),
+                                );
+                              }
+                            },
+                            style: ElevatedButton.styleFrom(
                               backgroundColor: const Color(0xFF28B960),
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(30),
@@ -150,7 +159,7 @@ class MissionSuggestScreen extends StatelessWidget {
                           height: 50,
                           child: ElevatedButton(
                             onPressed: () {
-                              Navigator.pop(context); // 그냥 뒤로가기
+                              Navigator.pop(context);
                             },
                             style: ElevatedButton.styleFrom(
                               backgroundColor: Colors.white,
