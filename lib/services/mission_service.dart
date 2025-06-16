@@ -1,6 +1,12 @@
 // lib/services/mission_service.dart
+import 'dart:convert';
 import 'dart:math';
+import 'package:dio/dio.dart';
+import 'package:sdsd/models/mission_list_item.dart';
 import 'package:sdsd/models/mission_record.dart';
+import '../config.dart';
+import '../models/mission_suggestion.dart';
+
 
 class MissionService {
   /// 월별 요약 (날짜별로 완료/미완료만 알면 되므로 List 길이를 1로 사용)
@@ -44,4 +50,93 @@ class MissionService {
       ),
     ];
   }
+
+  /// 특정 회원의 미션 목록 (최신 생성일 순)
+  static Future<List<MissionListItem>> fetchAllMissions() async {
+    try {
+      final response = await Dio().get(
+        '${Config.baseUrl}/api/members/${Config.memberSeq}/missions',
+        options: Options(headers: {
+          'Authorization': 'Bearer ${Config.accessToken}',
+        }),
+      );
+
+      final data = response.data as List<dynamic>;
+      return data.map((item) => MissionListItem.fromJson(item)).toList();
+    } catch (e) {
+      print('$e');
+      throw Exception('미션 목록 불러오기 실패: $e');
+    }
+  }
+  /// 특정 회원의 최근 생성 미션
+
+  /// 미션 수락 (서버로 미션 제안 수락 요청)
+  static Future<int> acceptMission(MissionSuggestion suggestion) async {
+    try {
+      final response = await Dio().post(
+        '${Config.baseUrl}/api/members/${Config.memberSeq}/missions/accept',
+        data: {
+          'mission_seq': suggestion.missionSeq,
+          'title': suggestion.title,
+        },
+        options: Options(headers: {
+          'Authorization': 'Bearer ${Config.accessToken}',
+        }),
+      );
+
+      if (response.statusCode == 201) {
+        final data = response.data;
+        return data['member_mission_seq'];
+      } else {
+        throw Exception('미션 수락 실패');
+      }
+
+    } catch (e) {
+      print('❌ 미션 수락 오류: $e');
+      throw Exception('미션 수락 실패: $e');
+    }
+
+  }
+
+  /// 미션 완료
+  static Future<void> completeMission(int memberMissionSeq) async {
+    try {
+      final response = await Dio().patch(
+        '${Config.baseUrl}/api/members/missions/$memberMissionSeq/complete',
+        options: Options(headers: {
+          'Authorization': 'Bearer ${Config.accessToken}',
+        }),
+      );
+
+      if (response.statusCode != 200) {
+        throw Exception('미션 완료 실패');
+      }
+    } catch (e) {
+      print('❌ 미션 완료 오류: $e');
+      throw Exception('미션 완료 실패: $e');
+    }
+  }
+
+  /// 미션 포기 (삭제)
+  static Future<void> deleteMission(int memberMissionSeq) async {
+    try {
+      final response = await Dio().delete(
+        '${Config.baseUrl}/api/members/missions/$memberMissionSeq',
+        options: Options(headers: {
+          'Authorization': 'Bearer ${Config.accessToken}',
+        }),
+      );
+
+      if (response.statusCode != 204) {
+        throw Exception('미션 삭제 실패');
+      }
+    } catch (e) {
+      print('❌ 미션 삭제 오류: $e');
+      throw Exception('미션 삭제 실패: $e');
+    }
+  }
+
+
+
+
 }

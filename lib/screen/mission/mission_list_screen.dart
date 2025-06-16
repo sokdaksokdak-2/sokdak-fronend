@@ -1,29 +1,44 @@
 import 'package:flutter/material.dart';
 import 'package:sdsd/widgets/custom_header.dart';
+import 'package:sdsd/services/mission_service.dart';
+import 'package:sdsd/models/mission_list_item.dart';
+import 'mission_start_screen.dart';
 
-class MissionListScreen extends StatelessWidget {
+class MissionListScreen extends StatefulWidget {
   const MissionListScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    final missions = [
-      {
-        'title': '친구들과의 이별',
-        'description': '울어도 괜찮아. 지금 이 감정을 ‘편지’로 써봐!',
-        'icon': 'assets/emotions/mission_stamp.png',
-      },
-      {
-        'title': '끝내주는 날씨',
-        'description': '이럴 땐! 이 순간을 영상으로 찍어서 남겨봐~',
-        'icon': 'assets/emotions/mission_stamp.png',
-      },
-      {
-        'title': '프로젝트 발표',
-        'description': '조금 떨려도 괜찮아~ 가벼운 산책 해보는 건 어때?',
-        'icon': 'assets/emotions/mission_none.png',
-      },
-    ];
+  State<MissionListScreen> createState() => _MissionListScreenState();
+}
 
+class _MissionListScreenState extends State<MissionListScreen> {
+  List<MissionListItem> _missions = [];
+  bool _isLoading = true;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadMissions();
+  }
+
+  Future<void> _loadMissions() async {
+    try {
+      final missions = await MissionService.fetchAllMissions();
+      setState(() {
+        _missions = missions;
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() {
+        _error = e.toString();
+        _isLoading = false;
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     const double headerHeight = 80;
 
     return Scaffold(
@@ -35,7 +50,6 @@ class MissionListScreen extends StatelessWidget {
         bottom: false,
         child: Stack(
           children: [
-            // 🔹 배경 이미지 넣고 싶다면 여기에 Positioned.fill 추가 가능
             Padding(
               padding: EdgeInsets.only(
                 top: MediaQuery.of(context).padding.top + headerHeight,
@@ -48,63 +62,100 @@ class MissionListScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 34),
                   Expanded(
-                    child: ListView.separated(
+                    child: _isLoading
+                        ? const Center(child: CircularProgressIndicator())
+                        : _error != null
+                        ? Center(child: Text('오류 발생: $_error'))
+                        : _missions.isEmpty
+                        ? const Align(
+                            alignment: Alignment(0, -0.1),
+                            child: Text(
+                              '아직 완료한 미션이 없어요!\n미션을 시작해보세요 😊',
+                              style: TextStyle(fontSize: 16, color: Colors.black54),
+                              textAlign: TextAlign.center,
+                            ),
+                    )
+                        : ListView.separated(
                       padding: const EdgeInsets.symmetric(horizontal: 20),
-                      itemCount: missions.length,
+                      itemCount: _missions.length,
                       separatorBuilder: (_, __) => const SizedBox(height: 14),
                       itemBuilder: (context, index) {
-                        final mission = missions[index];
-                        return Container(
-                          padding: const EdgeInsets.all(16),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(20),
-                            boxShadow: const [
-                              BoxShadow(
-                                color: Colors.black12,
-                                blurRadius: 6,
-                                offset: Offset(0, 3),
-                              ),
-                            ],
-                          ),
-                          child: Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Image.asset(
-                                mission['icon']!,
-                                width: 32,
-                                height: 32,
-                              ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      mission['title']!,
-                                      style: const TextStyle(
-                                        fontWeight: FontWeight.w700,
-                                        fontSize: 16,
-                                        color: Colors.black87,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 6),
-                                    Text(
-                                      mission['description']!,
-                                      style: const TextStyle(
-                                        fontSize: 14,
-                                        color: Colors.black54,
-                                      ),
-                                    ),
-                                  ],
+                        final mission = _missions[index];
+                        return GestureDetector(
+                          onTap: () async {
+                            final result = await Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => MissionStartScreen(
+                                  mission: mission,
+                                  onCancel: () async {
+                                    await MissionService.deleteMission(mission.memberMissionSeq);
+                                    Navigator.pop(context, true);
+                                  },
+                                  onComplete: () async {
+                                    await MissionService.completeMission(mission.memberMissionSeq);
+                                    Navigator.pop(context, true);
+                                  },
                                 ),
                               ),
-                            ],
+                            );
+                            if (result == true) _loadMissions();
+                          },
+                          child: Container(
+                            padding: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(20),
+                              boxShadow: const [
+                                BoxShadow(
+                                  color: Colors.black12,
+                                  blurRadius: 6,
+                                  offset: Offset(0, 3),
+                                ),
+                              ],
+                            ),
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Image.asset(
+                                  mission.completed
+                                      ? 'assets/emotions/mission_stamp.png'
+                                      : 'assets/emotions/mission_none.png',
+                                  width: 32,
+                                  height: 32,
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        mission.title,
+                                        style: const TextStyle(
+                                          fontWeight: FontWeight.w700,
+                                          fontSize: 16,
+                                          color: Colors.black87,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 6),
+                                      Text(
+                                        mission.content,
+                                        style: const TextStyle(
+                                          fontSize: 14,
+                                          color: Colors.black54,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
                         );
                       },
                     ),
                   ),
+
                 ],
               ),
             ),

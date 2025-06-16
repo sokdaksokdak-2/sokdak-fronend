@@ -3,13 +3,10 @@ import 'package:flutter/foundation.dart';
 
 class Config {
   // ✅ 개발 중엔 이걸 사용
-  // static const String baseUrl = 'http://192.168.219.194:8000';
+  // static const String baseUrl = 'http://192.168.0.199:8000';
 
-  // static const String baseUrl = 'http://192.168.127.163:8000';
 
-  static const String baseUrl = 'http://192.168.219.149:8000';
-
-  // static const String baseUrl = 'http://sokdak.kro.kr';
+  static const String baseUrl = 'http://sokdak.kro.kr';
 
 
 

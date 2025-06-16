@@ -2,14 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:sdsd/widgets/custom_header.dart';
 import '../../models/mission_list_item.dart';
 
-class MissionStartScreen extends StatelessWidget {
+class MissionReadyScreen extends StatelessWidget {
   final MissionListItem mission;
   // final VoidCallback onCancel;
   // final VoidCallback onComplete;
   final Future<void> Function() onCancel;
   final Future<void> Function() onComplete;
 
-  const MissionStartScreen({
+  const MissionReadyScreen({
     super.key,
     required this.mission,
     required this.onCancel,
@@ -136,7 +136,6 @@ class MissionStartScreen extends StatelessWidget {
                           height: 50,
                           child: ElevatedButton(
                             onPressed: () async{
-                              await onCancel();
                               if (context.mounted) {
                                 Navigator.of(context).pushNamedAndRemoveUntil('/main', (r) => false, arguments: 3);
                               }
@@ -149,7 +148,7 @@ class MissionStartScreen extends StatelessWidget {
                               ),
                             ),
                             child: const Text(
-                              '그만둘래',
+                              '나중에 할래',
                               style: TextStyle(
                                 fontSize: 16,
                                 fontWeight: FontWeight.w600,

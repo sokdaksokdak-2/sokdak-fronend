@@ -35,15 +35,12 @@ class ProfileCard extends StatelessWidget {
                     ),
                     Text(
                       Config.email,
-                      style: TextStyle(
-                        color: Colors.grey[600],
-                        fontSize: 14,
-                      ),
+                      style: TextStyle(color: Colors.grey[600], fontSize: 14),
                     ),
                   ],
                 ),
                 const Spacer(),
-                const Icon(Icons.chevron_right, size: 20),
+                // const Icon(Icons.chevron_right, size: 20),
               ],
             ),
 
@@ -64,7 +61,7 @@ class ProfileCard extends StatelessWidget {
                       ),
                     ),
                     Text(
-                      '63℃',
+                      '36.5℃',
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
                         fontSize: 14,
@@ -77,10 +74,12 @@ class ProfileCard extends StatelessWidget {
                 ClipRRect(
                   borderRadius: BorderRadius.circular(8),
                   child: LinearProgressIndicator(
-                    value: 0.63,
+                    value: 0.365,
                     minHeight: 8,
                     backgroundColor: Colors.grey[300],
-                    valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF28B960)),
+                    valueColor: AlwaysStoppedAnimation<Color>(
+                      Color(0xFF28B960),
+                    ),
                   ),
                 ),
               ],

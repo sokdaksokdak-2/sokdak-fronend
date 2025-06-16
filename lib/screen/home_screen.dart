@@ -9,6 +9,9 @@ import 'package:http/http.dart' as http;
 import 'package:sdsd/widgets/custom_header.dart';
 import 'package:sdsd/utils/bluetooth_controller_serial.dart';
 
+import '../services/chat_service.dart';
+import 'mission/mission_suggest_screen.dart';
+
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
@@ -71,7 +74,10 @@ class _HomeScreenState extends State<HomeScreen> {
       bool available = await _speech.initialize(
         onStatus: (status) {
           if (status == 'notListening' && isListening) {
-            Future.delayed(const Duration(milliseconds: 300), startListeningLoop);
+            Future.delayed(
+              const Duration(milliseconds: 300),
+              startListeningLoop,
+            );
           }
         },
         onError: (error) {
@@ -94,32 +100,36 @@ class _HomeScreenState extends State<HomeScreen> {
       setState(() => isListening = false);
       _speech.stop();
       silenceTimer?.cancel();
-      if (conversationHistory.isNotEmpty) {
 
-        final now = DateTime.now();
-        final key = DateTime(now.year, now.month, now.day);
+      // 서버에 대화 종료 요청 보내기
+      try {
+        final suggestion = await ChatService.completeChat();
+        if (!mounted) return;
+        // Navigator.push(
+        //   context,
+        //   MaterialPageRoute(
+        //     builder: (_) => MissionSuggestScreen(suggestion: suggestion),
+        //   ),
+        // );
+        final currentContext = context; // ✅ context 백업
 
-        final summary = conversationHistory
-            .map((entry) => "나: ${entry['user']}\n속닥이: ${entry['bot']}")
-            .join('\n');
-
-        final latestEmotionSeq = conversationHistory.last['emotion_seq'];
-        final emotionPath = 'assets/emotions/${latestEmotionSeq}_emoji.png';
-
-        final record = EmotionRecordUI(
-          emotion: emotionPath,
-          title: '오늘의 감정 대화 요약',
-          content: summary,
+        // ✅ 안전하게 다음 프레임에서 push
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          Navigator.of(currentContext).push(
+            MaterialPageRoute(
+              builder: (_) => MissionSuggestScreen(suggestion: suggestion),
+            ),
+          );
+        });
+      } catch (e) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('대화 요약 및 미션 제안 실패')),
         );
-
-        emotionRecords.putIfAbsent(key, () => []).add(record);
-        conversationHistory.clear();
-
-        print('✅ 대화 종료: 요약 서버로 전송됨 (${summary.length}자)');
-
       }
     }
   }
+
 
   void startListeningLoop() {
     if (!_speech.isAvailable || !isListening) return;
@@ -132,15 +142,16 @@ class _HomeScreenState extends State<HomeScreen> {
           startListeningLoop();
           return;
         }
-        silenceTimer = Timer(const Duration(milliseconds: 1500), () async {
+        silenceTimer = Timer(const Duration(milliseconds: 1200), () async {
           await sendTextToServer(spokenText);
           if (isListening) Future.delayed(const Duration(milliseconds: 300), startListeningLoop);
         });
       },
-      pauseFor: const Duration(seconds: 8),
+      pauseFor: const Duration(seconds: 60),
       listenFor: const Duration(minutes: 1),
     );
   }
+
 
   Future<void> sendTextToServer(String text) async {
     final uri = Uri.parse('${Config.baseUrl}/api/chatbot/chat');
@@ -279,23 +290,26 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                 ),
                 Padding(
-                  padding: const EdgeInsets.only(bottom: 40),
+                  padding: const EdgeInsets.only(bottom: 20),
                   child: Stack(
                     alignment: Alignment.center,
                     children: [
-                      if (isListening)
-                        Positioned(
-                          child: SizedBox(
-                            width: 120,
-                            height: 120,
-                            child: Lottie.asset(
-                              'assets/lottie/mic.json',
-                              repeat: true,
-                              animate: true,
-                              errorBuilder: (context, error, stackTrace) => const SizedBox(),
-                            ),
+                      // ✅ 위치 고정 + 애니메이션만 보이게
+                      SizedBox(
+                        width: 120,
+                        height: 120,
+                        child: AnimatedOpacity(
+                          opacity: isListening ? 1.0 : 0.0,
+                          duration: const Duration(milliseconds: 300),
+                          child: Lottie.asset(
+                            'assets/lottie/mic.json',
+                            repeat: true,
+                            animate: true,
+                            errorBuilder: (context, error, stackTrace) => const SizedBox(),
                           ),
                         ),
+                      ),
+                      // 🎤 마이크 버튼
                       GestureDetector(
                         onTap: _toggleListening,
                         child: AnimatedContainer(
@@ -340,6 +354,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     ],
                   ),
                 ),
+
               ],
             ),
           ),

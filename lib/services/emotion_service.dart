@@ -39,22 +39,32 @@ class EmotionService {
     final dateStr =
         '${date.year.toString().padLeft(4, '0')}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
 
-    final res = await _dio.get(
-      '/api/emo_calendar/daily',
-      queryParameters: {
-        'member_seq'   : memberSeq,
-        'calendar_date': dateStr,
-      },
-      options: Options(headers: {
-        'Authorization': 'Bearer ${Config.accessToken}',
-      }),
-    );
+    try {
+      final res = await _dio.get(
+        '/api/emo_calendar/daily',
+        queryParameters: {
+          'member_seq': memberSeq,
+          'calendar_date': dateStr,
+        },
+        options: Options(headers: {
+          'Authorization': 'Bearer ${Config.accessToken}',
+        }),
+      );
 
+      if (res.statusCode != 200 || res.data == null) return [];
 
-    return (res.data as List)
-        .map((e) => EmotionRecord.fromJson(e))
-        .toList();
+      final data = res.data;
+      if (data is List) {
+        return data.map((e) => EmotionRecord.fromJson(e)).toList();
+      } else {
+        return [];
+      }
+    } catch (e, st) {
+      debugPrint('[EmotionService] fetchDailyEmotions 예외: $e');
+      return [];
+    }
   }
+
 
   // ───────── 분석 + 저장 (AI) ─────────
   static Future<EmotionRecord> analyzeAndSave({
@@ -182,31 +192,39 @@ class EmotionService {
     required String title,
     required String content,
   }) async {
-    try {
-      final response = await http.put(
-        Uri.parse('$_baseUrl/$detailSeq?member_seq=$memberSeq'),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          'emotion_seq': emotionSeq,
-          'title': title,
-          'context': content,
-        }),
-      );
+    final res = await _dio.put(
+      '$_baseUrl/$detailSeq',
+      queryParameters: {
+        'member_seq': memberSeq,
+      },
+      data: {
+        'emotion_seq': emotionSeq,
+        'title': title,
+        'context': content,
+      },
+      options: Options(validateStatus: (_) => true),
+    );
 
-      if (response.statusCode == 200) {
-        // 수정 후 해당 날짜의 전체 기록을 다시 가져옴
-        final records = await fetchDailyEmotions(
-          memberSeq: memberSeq,
-          date: DateTime.now(),
-        );
-        return records.firstWhere((r) => r.detail_seq == detailSeq);
-      } else {
-        throw Exception('감정 기록 수정 실패: ${response.statusCode}');
-      }
-    } catch (e) {
-      throw Exception('감정 기록 수정 중 오류 발생: $e');
+    if (res.statusCode != 200) {
+      throw Exception('감정 기록 수정 실패: ${res.statusCode}');
     }
+
+    final data = res.data;
+    if (data == null || data['detail_seq'] == null) {
+      throw Exception('❌ 서버 응답에 detail_seq가 없음');
+    }
+
+    return EmotionRecord(
+      detail_seq: data['detail_seq'],
+      emotionSeq: data['emotion_seq'],
+      title: data['title'] ?? '',
+      content: data['context'] ?? '',
+      calendarDate: data['calendar_date'] != null
+          ? DateTime.parse(data['calendar_date'])
+          : DateTime.now(),
+    );
   }
+
 
   /// 감정 기록 삭제
   static Future<void> deleteEmotionRecord(int detailSeq) async {

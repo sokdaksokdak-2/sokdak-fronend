@@ -1,4 +1,3 @@
-// lib/screen/settings/settings_screen.dart
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
@@ -19,32 +18,27 @@ import 'package:sdsd/widgets/profile_card.dart';
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
 
-  // ───── 로그아웃 메인 로직 ──────────────────────────────────────────────
   Future<void> _logoutAndGoToIntro(BuildContext context) async {
     debugPrint('🧼 로그아웃 시작');
     debugPrint('🧼 로그아웃 전 accessToken: ${Config.accessToken}');
 
-    await _revokeNaverToken(); // 1) 네이버 토큰 폐기 (실패해도 무시)
-    await Config.clear(); // 2) 앱 내부 상태 초기화 (SharedPreferences 포함)
+    await _revokeNaverToken();
+    await Config.clear();
 
     debugPrint('🧼 로그아웃 후 accessToken: ${Config.accessToken}');
 
-    // 3) Navigator 스택 초기화 후 IntroScreen
     Navigator.pushAndRemoveUntil(
       context,
       MaterialPageRoute(builder: (_) => const IntroScreen()),
       (_) => false,
     );
 
-    // 4) 루트(MyAppState)의 _currentScreen 도 IntroScreen 으로
     context.findAncestorStateOfType<MyAppState>()?.resetToIntro();
   }
 
-  /// 네이버 토큰 폐기(grant_type=delete). 다른 provider면 수정하세요.
   Future<void> _revokeNaverToken() async {
     if (Config.accessToken.isEmpty) return;
 
-    // TODO: 본인 네이버 애플리케이션의 client_id / client_secret 로 교체
     const clientId = 'AuARYXdKUbOgxePEuV7_';
     const clientSecret = 'pdhpc9WwfW';
 
@@ -81,7 +75,6 @@ class SettingsScreen extends StatelessWidget {
                 style: TextStyle(fontSize: 18, color: Colors.black87),
               ),
               const SizedBox(height: 34),
-
               Expanded(
                 child: SingleChildScrollView(
                   padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -99,7 +92,7 @@ class SettingsScreen extends StatelessWidget {
                       _buildCard(
                         context: context,
                         title: '앱 정보 및 정책',
-                        items: ['서비스 이용약관', '개인정보 처리방침', '의견 보내기 / 도움 요청하기'],
+                        items: ['서비스 이용약관', '개인정보 처리방침', '의견 보내기'],
                       ),
                       const SizedBox(height: 12),
                       _buildCard(
@@ -202,7 +195,7 @@ class SettingsScreen extends StatelessWidget {
                         ),
                       );
                       break;
-                    case '의견 보내기 / 도움 요청하기':
+                    case '의견 보내기':
                       Navigator.push(
                         context,
                         MaterialPageRoute(
@@ -220,7 +213,6 @@ class SettingsScreen extends StatelessWidget {
     );
   }
 
-  // ───── 로그아웃 다이얼로그 ──────────────────────────────────────────────
   void _showLogoutDialog(BuildContext context) {
     showDialog(
       context: context,
@@ -289,7 +281,6 @@ class SettingsScreen extends StatelessWidget {
     );
   }
 
-  // ───── 회원탈퇴 다이얼로그 (기존 로직 유지) ───────────────────────────────
   void _showDeleteAccountDialog(BuildContext context) {
     showDialog(
       context: context,

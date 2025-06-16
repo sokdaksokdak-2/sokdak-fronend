@@ -1,4 +1,3 @@
-// lib/widgets/emotion_input_dialog.dart
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:sdsd/config.dart';
@@ -31,8 +30,12 @@ class _EmotionInputDialogState extends State<EmotionInputDialog> {
   @override
   void initState() {
     super.initState();
-    _titleController = TextEditingController(text: widget.existingRecord?.title ?? '');
-    _contentController = TextEditingController(text: widget.existingRecord?.content ?? '');
+    _titleController = TextEditingController(
+      text: widget.existingRecord?.title ?? '',
+    );
+    _contentController = TextEditingController(
+      text: widget.existingRecord?.content ?? '',
+    );
     _selectedEmotionSeq = widget.existingRecord?.emotionSeq ?? 0;
   }
 
@@ -45,16 +48,12 @@ class _EmotionInputDialogState extends State<EmotionInputDialog> {
 
   Future<void> _saveEmotion() async {
     if (_selectedEmotionSeq == 0) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('감정을 선택해주세요')),
-      );
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('감정을 선택해주세요')));
       return;
     }
 
     if (_titleController.text.trim().isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('제목을 입력해주세요')),
-      );
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('제목을 입력해주세요')));
       return;
     }
 
@@ -62,7 +61,6 @@ class _EmotionInputDialogState extends State<EmotionInputDialog> {
 
     try {
       EmotionRecord record;
-
       if (widget.existingRecord != null) {
         record = await EmotionService.updateEmotionRecord(
           detailSeq: widget.existingRecord!.detail_seq,
@@ -83,12 +81,11 @@ class _EmotionInputDialogState extends State<EmotionInputDialog> {
 
       if (!mounted) return;
       widget.onSave(record);
-      Navigator.pop(context);
+      Navigator.of(context).pop('saved');
+
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('저장 실패: $e')),
-      );
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('저장 실패: $e')));
     } finally {
       if (mounted) {
         setState(() => _isLoading = false);
@@ -99,66 +96,62 @@ class _EmotionInputDialogState extends State<EmotionInputDialog> {
   @override
   Widget build(BuildContext context) {
     return Container(
-      constraints: const BoxConstraints(minHeight: 550, maxWidth: 325),
+      constraints: const BoxConstraints(minHeight: 550, maxWidth: 340),
       decoration: BoxDecoration(
         color: Colors.grey[100],
         borderRadius: BorderRadius.circular(20),
       ),
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(24),
       child: SingleChildScrollView(
         child: Column(
           mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            const SizedBox(height: 22),
-
             const Align(
               alignment: Alignment.centerLeft,
-              child: Padding(
-                padding: EdgeInsets.only(left: 8),
-                child: Text(
-                  '기분 어때?',
-                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
-                ),
+              child: Text(
+                '기분 어때?',
+                style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
               ),
             ),
-            const SizedBox(height: 10),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              alignment: WrapAlignment.center,
-              children: List.generate(5, (i) {
-                final seq = i + 1;
-                return GestureDetector(
-                  onTap: () => setState(() => _selectedEmotionSeq = seq),
-                  child: Opacity(
-                    opacity: _selectedEmotionSeq == seq ? 1.0 : 0.3,
+            const SizedBox(height: 12),
+
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [4, 3, 1, 5, 2].map((seq) {
+                  final isSelected = _selectedEmotionSeq == seq;
+                  return GestureDetector(
+                    onTap: () => setState(() => _selectedEmotionSeq = seq),
                     child: Column(
+                      mainAxisSize: MainAxisSize.min,
                       children: [
-                        Container(
-                          width: 60,
-                          height: 60,
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(12),
-                            color: Colors.white,
-                          ),
-                          child: Image.asset(emotionAsset(seq)),
+                        Opacity(
+                          opacity: isSelected ? 1.0 : 0.3,
+                          child: Image.asset(emotionAsset(seq), width: 45, height: 45),
                         ),
                         const SizedBox(height: 4),
                         Text(
                           emotionLabelFromSeq(seq),
                           style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: _selectedEmotionSeq == seq ? FontWeight.bold : FontWeight.normal,
+                            fontSize: 11,
+                            fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                            color: isSelected ? Colors.black : Colors.black38,
                           ),
                         ),
                       ],
                     ),
-                  ),
-                );
-              }),
+                  );
+                }).toList(),
+              ),
             ),
 
-            const SizedBox(height: 25),
+            const SizedBox(height: 28),
             _fieldLabel('제목'),
             const SizedBox(height: 8),
             TextField(
@@ -166,7 +159,7 @@ class _EmotionInputDialogState extends State<EmotionInputDialog> {
               decoration: _inputDecoration(),
             ),
 
-            const SizedBox(height: 25),
+            const SizedBox(height: 24),
             _fieldLabel('내용'),
             const SizedBox(height: 8),
             TextField(
@@ -175,12 +168,12 @@ class _EmotionInputDialogState extends State<EmotionInputDialog> {
               decoration: _inputDecoration(),
             ),
 
-            const SizedBox(height: 20),
+            const SizedBox(height: 28),
             Row(
               children: [
                 Expanded(
                   child: ElevatedButton(
-                    onPressed: () => Navigator.pop(context),
+                    onPressed: () => Navigator.of(context).pop('closed'),
                     style: _cancelStyle(),
                     child: const Text('취소', style: TextStyle(fontSize: 14)),
                   ),
@@ -204,7 +197,7 @@ class _EmotionInputDialogState extends State<EmotionInputDialog> {
   }
 
   Padding _fieldLabel(String text) => Padding(
-    padding: const EdgeInsets.only(left: 8),
+    padding: const EdgeInsets.only(left: 4),
     child: Align(
       alignment: Alignment.centerLeft,
       child: Text(
@@ -247,7 +240,6 @@ class _EmotionInputDialogState extends State<EmotionInputDialog> {
   );
 }
 
-// 👉 여기 아래에 추가!
 String emotionLabelFromSeq(int seq) {
   switch (seq) {
     case 1:

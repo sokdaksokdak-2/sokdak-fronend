@@ -1,4 +1,3 @@
-// lib/widgets/emotion_record_viewer_dialog.dart
 import 'package:flutter/material.dart';
 import '../models/emotion_record.dart';
 import '../utils/emotion_helper.dart';
@@ -35,40 +34,85 @@ class _EmotionRecordViewerDialogState extends State<EmotionRecordViewerDialog> {
   }
 
   Future<void> _confirmAndDelete(int index) async {
-    print('[DEBUG] _confirmAndDelete index=$index'); // ①
-
+    print('[레코드뷰어] 삭제 시도 (idx: $index)');
     final ok = await showDialog<bool>(
       context: context,
       builder:
           (_) => AlertDialog(
-            title: const Text('정말 삭제하시겠어요?'),
-            content: const Text('이 감정 기록은 삭제 후 복구할 수 없습니다.'),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context, false),
-                child: const Text('취소'),
-              ),
-              TextButton(
-                onPressed: () => Navigator.pop(context, true),
-                child: const Text('삭제', style: TextStyle(color: Colors.red)),
-              ),
-            ],
+        backgroundColor: Colors.white,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20), // 둥글게
+        ),
+        elevation: 8,
+        title: const Text(
+          '정말 삭제하시겠어요?',
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            fontSize: 18,
+            color: Colors.black87,
           ),
+          textAlign: TextAlign.center,
+        ),
+        content: const Text(
+          '이 감정 기록은 삭제 후 \n복구할 수 없습니다.',
+          style: TextStyle(color: Colors.black54, fontSize: 15),
+          textAlign: TextAlign.center,
+        ),
+        actionsAlignment: MainAxisAlignment.end, // ★ 여기만 변경!
+        actionsPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        actions: [
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.grey[200], // 연회색 배경
+              foregroundColor: Colors.black87,   // 검정 글씨
+              minimumSize: const Size(80, 40),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+              elevation: 0,
+            ),
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('취소'),
+          ),
+          // const SizedBox(width: 8),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Color(0xFF28B960), // 녹색
+              foregroundColor: Colors.white,      // 흰색 글씨
+              minimumSize: const Size(80, 40),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+              elevation: 0,
+            ),
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('삭제'),
+          ),
+        ],
+      )
+
+
     );
     if (ok != true) return;
 
     setState(() => _loading = true);
 
     try {
-      print('[DEBUG] before onDelete'); // ②
-      await widget.onDelete(index); // 실제 DELETE API 콜백
-      print('[DEBUG] after onDelete'); // ③
+      await widget.onDelete(index);
+      _records.removeAt(index);
 
-      setState(() => _records.removeAt(index));
+      print('[레코드뷰어] 삭제 완료, 남은 개수: ${_records.length}');
+      if (_records.isEmpty) {
+        if (mounted) {
+          print('[레코드뷰어] 모두 삭제됨, dialog pop!');
+          Navigator.of(context).pop('deleted'); // 항상 자신의 context!
+        }
+        return;
+      }
 
-      // 모두 삭제되면 다이얼로그 자동 닫기
-      if (_records.isEmpty && mounted) Navigator.pop(context);
+      if (mounted) setState(() {});
     } catch (e) {
+      print('[레코드뷰어] 삭제 오류: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('삭제 중 오류가 발생했습니다. 다시 시도해 주세요.')),
@@ -241,24 +285,97 @@ class _EmotionRecordViewerDialogState extends State<EmotionRecordViewerDialog> {
                 ),
                 const SizedBox(height: 16),
                 Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
                   children: [
-                    ElevatedButton(
-                      onPressed: () => Navigator.pop(context),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.grey[500],
-                        foregroundColor: Colors.white,
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: () {},
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFFF3F3F3),
+                          elevation: 0,
+                          padding: const EdgeInsets.symmetric(vertical: 10),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: const [
+                            Icon(
+                              Icons.download,
+                              size: 16,
+                              color: Color(0xFF4E4E4E),
+                            ),
+                            SizedBox(width: 6),
+                            Text(
+                              '저장',
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: Color(0xFF4E4E4E),
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
-                      child: const Text('닫기'),
                     ),
                     const SizedBox(width: 8),
-                    ElevatedButton(
-                      onPressed: widget.onAdd,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.black,
-                        foregroundColor: Colors.white,
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: () {},
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFFF3F3F3),
+                          elevation: 0,
+                          padding: const EdgeInsets.symmetric(vertical: 10),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: const [
+                            Icon(
+                              Icons.share,
+                              size: 16,
+                              color: Color(0xFF4E4E4E),
+                            ),
+                            SizedBox(width: 6),
+                            Text(
+                              '공유',
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: Color(0xFF4E4E4E),
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
-                      child: const Text('추가'),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: () => Navigator.of(context).pop('closed'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.grey[500],
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        child: const Text('닫기'),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: widget.onAdd,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.black,
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        child: const Text('추가'),
+                      ),
                     ),
                   ],
                 ),
