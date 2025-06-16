@@ -47,12 +47,79 @@ class _HomeScreenState extends State<HomeScreen> {
     5: 'soso',
   };
 
+  // 안내 팝업 함수 추가
+  void showGuidePopup() {
+    showDialog(
+      context: context,
+      barrierDismissible: true,
+      builder: (context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          backgroundColor: Colors.white,
+          title: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: const [
+              Text(
+                '속닥속닥 대화 가이드',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black,
+                  fontSize: 18,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              SizedBox(height: 16), // 제목-본문 사이 간격
+            ],
+          ),
+          content: const Text(
+            // '1. 마이크 버튼을 누르고\n오늘 하루를 들려주세요!\n\n2. 종료하시려면\n 다시 버튼을 눌러주세요!\n\n3. 대화가 종료되면\n미션을 추천드려요😊',
+            '1. 마이크 아이콘을\n누르면 대화가 시작돼요.\n\n2. 대화가 시작되면\n계속 말을 이어갈 수 있어요.\n매번 마이크를 누르지 않아도 돼요!\n\n3. 대화를 끝내고 싶을 땐,\n마이크를 다시 한 번 눌러주세요.\n\n4. 대화가 종료되면\n미션을 제안해드릴게요.🎁',
+            style: TextStyle(fontSize: 15, color: Colors.black87),
+            textAlign: TextAlign.center,
+          ),
+          actionsAlignment: MainAxisAlignment.center,
+          actions: [
+            TextButton(
+              style: TextButton.styleFrom(
+                backgroundColor: Color(0xFF28B960),
+                foregroundColor: Colors.white,
+                padding: EdgeInsets.symmetric(horizontal: 18, vertical: 8),
+                minimumSize: Size(0, 32),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(18),
+                ),
+              ),
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text(
+                '확인',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 15,
+                  color: Colors.white,
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+
   @override
   void initState() {
     super.initState();
     _speech = stt.SpeechToText();
     _bluetoothController = BluetoothController();
     _initializeBluetooth();
+
+    // 홈 첫 진입 시 안내 팝업 0.6초 후 띄우기
+    Future.delayed(const Duration(milliseconds: 600), () {
+      if (mounted) showGuidePopup();
+    });
   }
 
   Future<void> _initializeBluetooth() async {
@@ -100,7 +167,6 @@ class _HomeScreenState extends State<HomeScreen> {
         startListeningLoop();
       }
     } else {
-      // 서버 호출 전 로딩 시작
       setState(() {
         isListening = false;
         isLoading = true;
@@ -113,7 +179,6 @@ class _HomeScreenState extends State<HomeScreen> {
         final suggestion = await ChatService.completeChat();
         if (!mounted) return;
 
-        // 서버 응답 후 로딩 종료
         setState(() => isLoading = false);
 
         WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -126,7 +191,6 @@ class _HomeScreenState extends State<HomeScreen> {
       } catch (e) {
         if (!mounted) return;
 
-        // 에러 시에도 로딩 종료
         setState(() => isLoading = false);
 
         ScaffoldMessenger.of(
@@ -407,28 +471,24 @@ class _HomeScreenState extends State<HomeScreen> {
             ],
           ),
         ),
-        // 로딩 오버레이
-        // 수정된 로딩 오버레이: Spinner 아래에 텍스트 추가
-         if (isLoading)
-           Positioned.fill(
-             child: Container(
-               color: Colors.black45,
-               child: Column(
-                 mainAxisAlignment: MainAxisAlignment.center,
-                 children: const [
-                   CircularProgressIndicator(),
-                   SizedBox(height: 16),
-                   Text(
-                     '미션 생성중...',
-                     style: TextStyle(
-                       color: Colors.white,
-                       fontSize: 16,
-                     ),
-               ),
-             ],
-           ),
-         ),
-       ),
+        // 로딩 오버레이 + 텍스트
+        if (isLoading)
+          Positioned.fill(
+            child: Container(
+              color: Colors.black45,
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: const [
+                  CircularProgressIndicator(),
+                  SizedBox(height: 16),
+                  Text(
+                    '미션 생성중...',
+                    style: TextStyle(color: Colors.white, fontSize: 16),
+                  ),
+                ],
+              ),
+            ),
+          ),
       ],
     );
   }

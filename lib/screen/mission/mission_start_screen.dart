@@ -4,8 +4,6 @@ import '../../models/mission_list_item.dart';
 
 class MissionStartScreen extends StatelessWidget {
   final MissionListItem mission;
-  // final VoidCallback onCancel;
-  // final VoidCallback onComplete;
   final Future<void> Function() onCancel;
   final Future<void> Function() onComplete;
 
@@ -18,12 +16,18 @@ class MissionStartScreen extends StatelessWidget {
 
   String getEmotionName(int seq) {
     switch (seq) {
-      case 1: return 'happy';
-      case 2: return 'sad';
-      case 3: return 'fear';
-      case 4: return 'angry';
-      case 5: return 'soso';
-      default: return 'happy';
+      case 1:
+        return 'happy';
+      case 2:
+        return 'sad';
+      case 3:
+        return 'fear';
+      case 4:
+        return 'angry';
+      case 5:
+        return 'soso';
+      default:
+        return 'happy';
     }
   }
 
@@ -44,24 +48,14 @@ class MissionStartScreen extends StatelessWidget {
         child: Stack(
           children: [
             // 배경 이미지
-            Positioned.fill(
-              child: Image.asset(
-                backImage,
-                fit: BoxFit.fill,
-              ),
-            ),
-
+            Positioned.fill(child: Image.asset(backImage, fit: BoxFit.fill)),
             // 캐릭터 이미지
             Positioned(
               left: 0,
               right: 0,
               bottom: 180,
-              child: Image.asset(
-                characterImage,
-                height: 350,
-              ),
+              child: Image.asset(characterImage, height: 350),
             ),
-
             // 본문과 버튼
             Padding(
               padding: EdgeInsets.only(
@@ -101,7 +95,10 @@ class MissionStartScreen extends StatelessWidget {
                   ),
                   const Spacer(),
                   Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 60, vertical: 30),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 60,
+                      vertical: 30,
+                    ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
@@ -109,11 +106,14 @@ class MissionStartScreen extends StatelessWidget {
                           height: 50,
                           child: ElevatedButton(
                             onPressed: () async {
-                              await onComplete(); // 반드시 완료 기다리기
+                              await onComplete();
                               if (context.mounted) {
-                                Navigator.of(context).pushNamedAndRemoveUntil('/main', (r) => false, arguments: 3);
+                                Navigator.of(context).pushNamedAndRemoveUntil(
+                                  '/main',
+                                  (r) => false,
+                                  arguments: 3,
+                                );
                               }
-
                             },
                             style: ElevatedButton.styleFrom(
                               backgroundColor: const Color(0xFF28B960),
@@ -135,10 +135,14 @@ class MissionStartScreen extends StatelessWidget {
                         SizedBox(
                           height: 50,
                           child: ElevatedButton(
-                            onPressed: () async{
+                            onPressed: () async {
                               await onCancel();
                               if (context.mounted) {
-                                Navigator.of(context).pushNamedAndRemoveUntil('/main', (r) => false, arguments: 3);
+                                Navigator.of(context).pushNamedAndRemoveUntil(
+                                  '/main',
+                                  (r) => false,
+                                  arguments: 3,
+                                );
                               }
                             },
                             style: ElevatedButton.styleFrom(
