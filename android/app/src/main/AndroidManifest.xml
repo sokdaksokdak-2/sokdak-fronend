@@ -24,7 +24,7 @@
 
     <application
         android:name="${applicationName}"
-        android:label="sdsd"
+        android:label="속닥속닥"
         android:icon="@mipmap/ic_launcher">
 
         <!-- ✅ permission_handler v12 이상 메타데이터 -->
