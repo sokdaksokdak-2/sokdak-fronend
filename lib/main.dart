@@ -96,10 +96,11 @@ class MyAppState extends State<MyApp> {
         Config.refreshToken = refresh ?? '';
         Config.nickname = nick ?? '';
         Config.memberSeq = seq;
+        print('닉네임 : ${Config.nickname}');
 
         setState(() {
           _currentScreen =
-              (nick == null || nick.isEmpty)
+              (nick == null || nick.isEmpty || nick == 'None')
                   ? const NicknameSetupScreen()
                   : const MainScreen();
         });
