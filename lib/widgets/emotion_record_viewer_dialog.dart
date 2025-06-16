@@ -1,4 +1,3 @@
-// lib/widgets/emotion_record_viewer_dialog.dart
 import 'package:flutter/material.dart';
 import '../models/emotion_record.dart';
 import '../utils/emotion_helper.dart';
@@ -35,6 +34,7 @@ class _EmotionRecordViewerDialogState extends State<EmotionRecordViewerDialog> {
   }
 
   Future<void> _confirmAndDelete(int index) async {
+    print('[레코드뷰어] 삭제 시도 (idx: $index)');
     final ok = await showDialog<bool>(
       context: context,
       builder:
@@ -61,16 +61,18 @@ class _EmotionRecordViewerDialogState extends State<EmotionRecordViewerDialog> {
       await widget.onDelete(index);
       _records.removeAt(index);
 
+      print('[레코드뷰어] 삭제 완료, 남은 개수: ${_records.length}');
       if (_records.isEmpty) {
-        _records.clear();
-        if (mounted && Navigator.of(context).canPop()) {
-          Navigator.of(context).pop();
+        if (mounted) {
+          print('[레코드뷰어] 모두 삭제됨, dialog pop!');
+          Navigator.of(context).pop('deleted'); // 항상 자신의 context!
         }
         return;
       }
 
       if (mounted) setState(() {});
     } catch (e) {
+      print('[레코드뷰어] 삭제 오류: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('삭제 중 오류가 발생했습니다. 다시 시도해 주세요.')),
@@ -310,7 +312,7 @@ class _EmotionRecordViewerDialogState extends State<EmotionRecordViewerDialog> {
                     const SizedBox(width: 8),
                     Expanded(
                       child: ElevatedButton(
-                        onPressed: () => Navigator.pop(context, 'closed'), // ✅ 문자열 'closed' 반환!
+                        onPressed: () => Navigator.of(context).pop('closed'),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.grey[500],
                           foregroundColor: Colors.white,

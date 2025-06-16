@@ -1,4 +1,3 @@
-// lib/screens/calendar/calendar_screen.dart
 import 'package:flutter/material.dart';
 import 'package:table_calendar/table_calendar.dart';
 
@@ -24,9 +23,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
   Map<DateTime, int?> _monthlySummary = {};
   Map<DateTime, List<EmotionRecord>> _dailyRecords = {};
 
-  bool _openedFromAddButton = false;
-  bool _isDeletingLastRecord = false;
-
   @override
   void initState() {
     super.initState();
@@ -34,6 +30,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
   }
 
   Future<void> _loadMonthlySummary(DateTime month) async {
+    print('[캘린더] _loadMonthlySummary($month)');
     final summaries = await EmotionService.fetchMonthlySummary(month);
     if (!mounted) return;
     setState(() {
@@ -43,7 +40,11 @@ class _CalendarScreenState extends State<CalendarScreen> {
     });
   }
 
-  Future<void> _loadDailyEmotions(DateTime date) async {
+  Future<void> _loadDailyEmotions(
+    BuildContext dialogContext,
+    DateTime date,
+  ) async {
+    print('[캘린더] _loadDailyEmotions($date)');
     final records = await EmotionService.fetchDailyEmotions(
       memberSeq: Config.memberSeq,
       date: date,
@@ -53,24 +54,36 @@ class _CalendarScreenState extends State<CalendarScreen> {
 
     if (records.isNotEmpty) {
       setState(() => _dailyRecords[date] = records);
+      print('[캘린더] 기록 있음, 레코드뷰어 open');
       if (!mounted) return;
-      _showEmotionRecordViewer(date, records);
+      _showEmotionRecordViewer(dialogContext, date, records);
     } else {
+      print('[캘린더] 기록 없음, 인풋 다이얼로그 open');
       if (!mounted) return;
-      _showEmotionInputDialog(date);
+      _showEmotionInputDialog(dialogContext, date);
     }
   }
 
-  void _onDaySelected(DateTime selectedDay, DateTime focusedDay) {
+  void _onDaySelected(
+    DateTime selectedDay,
+    DateTime focusedDay,
+    BuildContext calendarContext,
+  ) {
+    print('[캘린더] _onDaySelected($selectedDay)');
     final dateOnly = DateUtils.dateOnly(selectedDay);
     setState(() {
       _selectedDay = dateOnly;
       _focusedDay = focusedDay;
     });
-    _loadDailyEmotions(dateOnly);
+    _loadDailyEmotions(calendarContext, dateOnly);
   }
 
-  void _showEmotionInputDialog(DateTime date, {int? existingIndex}) {
+  void _showEmotionInputDialog(
+    BuildContext dialogContext,
+    DateTime date, {
+    int? existingIndex,
+  }) {
+    print('[캘린더] _showEmotionInputDialog($date)');
     final existingList = _dailyRecords[date];
     final existingRecord =
         (existingIndex != null &&
@@ -81,7 +94,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
             : null;
 
     showDialog(
-      context: context,
+      context: dialogContext,
       barrierDismissible: false,
       builder:
           (_) => Dialog(
@@ -92,6 +105,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
               date: date,
               existingRecord: existingRecord,
               onSave: (_) async {
+                print('[캘린더] 감정 저장됨! 캘린더, 데일리 상태 갱신');
                 await Future.delayed(const Duration(milliseconds: 300));
                 if (!mounted) return;
                 await _loadMonthlySummary(_focusedDay);
@@ -108,50 +122,62 @@ class _CalendarScreenState extends State<CalendarScreen> {
     );
   }
 
-  void _showEmotionRecordViewer(DateTime date, List<EmotionRecord> records) {
-    _openedFromAddButton = false;
-    _isDeletingLastRecord = false;
-
+  void _showEmotionRecordViewer(
+    BuildContext dialogContext,
+    DateTime date,
+    List<EmotionRecord> records,
+  ) {
+    print('[캘린더] _showEmotionRecordViewer($date, ${records.length}개)');
     showDialog(
-      context: context,
-      builder: (_) => EmotionRecordViewerDialog(
-        records: records,
-        memberSeq: Config.memberSeq,
-        onEdit: (i) => _showEmotionInputDialog(date, existingIndex: i),
-        onDelete: (i) async {
-          final rec = records[i];
-          if (rec.detail_seq == 0) return;
+      context: dialogContext,
+      builder:
+          (_) => EmotionRecordViewerDialog(
+            records: records,
+            memberSeq: Config.memberSeq,
+            onEdit:
+                (i) => _showEmotionInputDialog(
+                  dialogContext,
+                  date,
+                  existingIndex: i,
+                ),
+            onDelete: (i) async {
+              final rec = records[i];
+              if (rec.detail_seq == 0) return;
+              print('[캘린더] onDelete: ${rec.detail_seq}');
 
-          try {
-            await EmotionService.deleteEmotionRecord(rec.detail_seq);
-            final updated = await EmotionService.fetchDailyEmotions(
-              memberSeq: Config.memberSeq,
-              date: date,
-            );
+              try {
+                await EmotionService.deleteEmotionRecord(rec.detail_seq);
+                final updated = await EmotionService.fetchDailyEmotions(
+                  memberSeq: Config.memberSeq,
+                  date: date,
+                );
 
-            setState(() => _dailyRecords[date] = updated);
-            await _loadMonthlySummary(_focusedDay);
+                setState(() => _dailyRecords[date] = updated);
+                await _loadMonthlySummary(_focusedDay);
 
-            _isDeletingLastRecord = updated.isEmpty;
-
-            Navigator.of(context).pop('deleted'); // ✅ 값 전달!
-          } catch (e, st) {
-            debugPrint('[deleteEmotionRecord] error: $e');
-            debugPrintStack(stackTrace: st);
-          }
-        },
-        onAdd: () {
-          _openedFromAddButton = true;
-          Navigator.pop(context, 'add'); // ✅ 값 전달!
-          Future.microtask(() => _showEmotionInputDialog(date));
-        },
-      ),
+                print('[캘린더] 삭제 후, 남은 기록: ${updated.length}');
+                // EmotionRecordViewerDialog가 자기 context에서 pop 해줌!
+              } catch (e, st) {
+                debugPrint('[deleteEmotionRecord] error: $e');
+                debugPrintStack(stackTrace: st);
+              }
+            },
+            onAdd: () {
+              print('[캘린더] onAdd');
+              Navigator.of(dialogContext).pop('add');
+              Future.microtask(
+                () => _showEmotionInputDialog(dialogContext, date),
+              );
+            },
+          ),
     ).then((result) async {
+      print('[캘린더] Dialog 종료 result: $result');
       if (!mounted) return;
 
-      // ✅ 사용자가 닫기 버튼 눌렀다면 그냥 리턴
-      if (result != null) return;
+      // 추가, 닫기, 혹은 input_dialog에서 닫기 등등이면 다시 열지 않는다
+      if (result == 'add' || result == 'closed' || result == null) return;
 
+      // 삭제 등등만 갱신해서 필요하면 다시 열기
       final updated = await EmotionService.fetchDailyEmotions(
         memberSeq: Config.memberSeq,
         date: date,
@@ -160,26 +186,26 @@ class _CalendarScreenState extends State<CalendarScreen> {
 
       setState(() => _dailyRecords[date] = updated);
 
-      // ✅ 기록 있을 때만 다시 열기
       if (updated.isNotEmpty) {
-        Future.microtask(() => _showEmotionRecordViewer(date, updated));
+        print('[캘린더] 삭제 후, 기록 남아 있으니 다시 레코드뷰어 open');
+        Future.microtask(
+          () => _showEmotionRecordViewer(dialogContext, date, updated),
+        );
+      } else {
+        print('[캘린더] 삭제 후, 기록 없음! 다이얼로그 재오픈 없음');
       }
     });
-
-
   }
 
   Widget _buildEmotionForDay(DateTime day) {
     final seq = _monthlySummary[DateUtils.dateOnly(day)];
-
     final asset = emotionAsset(seq ?? 0);
 
     return Opacity(
-      opacity: (seq == null || seq == 0) ? 0.3 : 1.0, // 감정 없을 때만 반투명
+      opacity: (seq == null || seq == 0) ? 0.3 : 1.0,
       child: Image.asset(asset, width: 40, height: 40),
     );
   }
-
 
   Widget _buildDayCell(DateTime day, bool selected) {
     return Column(
@@ -223,88 +249,101 @@ class _CalendarScreenState extends State<CalendarScreen> {
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: const CustomHeader(showBackButton: false),
       body: SafeArea(
-        child: Column(
-          children: [
-            const Text('감정 캘린더', style: TextStyle(fontSize: 18)),
-            const SizedBox(height: 24),
-            Expanded(
-              child: SingleChildScrollView(
-                child: Column(
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 24),
-                      child: Stack(
-                        alignment: Alignment.center,
+        child: Builder(
+          builder:
+              (calendarContext) => Column(
+                children: [
+                  const Text('감정 캘린더', style: TextStyle(fontSize: 18)),
+                  const SizedBox(height: 24),
+                  Expanded(
+                    child: SingleChildScrollView(
+                      child: Column(
                         children: [
-                          Align(
-                            alignment: Alignment.centerLeft,
-                            child: IconButton(
-                              icon: const Icon(Icons.chevron_left),
-                              onPressed: () => _moveMonth(-1),
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 24),
+                            child: Stack(
+                              alignment: Alignment.center,
+                              children: [
+                                Align(
+                                  alignment: Alignment.centerLeft,
+                                  child: IconButton(
+                                    icon: const Icon(Icons.chevron_left),
+                                    onPressed: () => _moveMonth(-1),
+                                  ),
+                                ),
+                                Column(
+                                  children: [
+                                    Text(
+                                      '${_focusedDay.year}',
+                                      style: const TextStyle(fontSize: 18),
+                                    ),
+                                    Text(
+                                      '${_focusedDay.month}',
+                                      style: const TextStyle(
+                                        fontSize: 28,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                Align(
+                                  alignment: Alignment.centerRight,
+                                  child: IconButton(
+                                    icon: const Icon(Icons.chevron_right),
+                                    onPressed: () => _moveMonth(1),
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
-                          Column(
-                            children: [
-                              Text(
-                                '${_focusedDay.year}',
-                                style: const TextStyle(fontSize: 18),
-                              ),
-                              Text(
-                                '${_focusedDay.month}',
-                                style: const TextStyle(
-                                  fontSize: 28,
+                          const SizedBox(height: 8),
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 16),
+                            child: TableCalendar(
+                              locale: 'ko_KR',
+                              rowHeight: 80,
+                              daysOfWeekHeight: 32,
+                              firstDay: DateTime.utc(2020, 1, 1),
+                              lastDay: DateTime.utc(2030, 12, 31),
+                              focusedDay: _focusedDay,
+                              headerVisible: false,
+                              calendarFormat: CalendarFormat.month,
+                              selectedDayPredicate:
+                                  (d) => isSameDay(d, _selectedDay),
+                              onDaySelected: (selectedDay, focusedDay) {
+                                _onDaySelected(
+                                  selectedDay,
+                                  focusedDay,
+                                  calendarContext,
+                                );
+                              },
+                              daysOfWeekStyle: const DaysOfWeekStyle(
+                                weekdayStyle: TextStyle(fontSize: 18),
+                                weekendStyle: TextStyle(
+                                  fontSize: 18,
                                   fontWeight: FontWeight.bold,
                                 ),
                               ),
-                            ],
-                          ),
-                          Align(
-                            alignment: Alignment.centerRight,
-                            child: IconButton(
-                              icon: const Icon(Icons.chevron_right),
-                              onPressed: () => _moveMonth(1),
+                              calendarStyle: const CalendarStyle(
+                                outsideDaysVisible: false,
+                              ),
+                              calendarBuilders: CalendarBuilders(
+                                defaultBuilder:
+                                    (c, d, _) => _buildDayCell(d, false),
+                                todayBuilder:
+                                    (c, d, _) => _buildDayCell(d, false),
+                                selectedBuilder:
+                                    (c, d, _) => _buildDayCell(d, true),
+                              ),
                             ),
                           ),
+                          const SizedBox(height: 24),
                         ],
                       ),
                     ),
-                    const SizedBox(height: 8),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      child: TableCalendar(
-                        locale: 'ko_KR',
-                        rowHeight: 80,
-                        daysOfWeekHeight: 32,
-                        firstDay: DateTime.utc(2020, 1, 1),
-                        lastDay: DateTime.utc(2030, 12, 31),
-                        focusedDay: _focusedDay,
-                        headerVisible: false,
-                        calendarFormat: CalendarFormat.month,
-                        selectedDayPredicate: (d) => isSameDay(d, _selectedDay),
-                        onDaySelected: _onDaySelected,
-                        daysOfWeekStyle: const DaysOfWeekStyle(
-                          weekdayStyle: TextStyle(fontSize: 18),
-                          weekendStyle: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        calendarStyle: const CalendarStyle(
-                          outsideDaysVisible: false,
-                        ),
-                        calendarBuilders: CalendarBuilders(
-                          defaultBuilder: (c, d, _) => _buildDayCell(d, false),
-                          todayBuilder: (c, d, _) => _buildDayCell(d, false),
-                          selectedBuilder: (c, d, _) => _buildDayCell(d, true),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 24),
-                  ],
-                ),
+                  ),
+                ],
               ),
-            ),
-          ],
         ),
       ),
     );

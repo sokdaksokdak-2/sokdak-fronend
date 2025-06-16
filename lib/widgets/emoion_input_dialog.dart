@@ -48,16 +48,12 @@ class _EmotionInputDialogState extends State<EmotionInputDialog> {
 
   Future<void> _saveEmotion() async {
     if (_selectedEmotionSeq == 0) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('감정을 선택해주세요')));
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('감정을 선택해주세요')));
       return;
     }
 
     if (_titleController.text.trim().isEmpty) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('제목을 입력해주세요')));
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('제목을 입력해주세요')));
       return;
     }
 
@@ -65,7 +61,6 @@ class _EmotionInputDialogState extends State<EmotionInputDialog> {
 
     try {
       EmotionRecord record;
-
       if (widget.existingRecord != null) {
         record = await EmotionService.updateEmotionRecord(
           detailSeq: widget.existingRecord!.detail_seq,
@@ -86,12 +81,11 @@ class _EmotionInputDialogState extends State<EmotionInputDialog> {
 
       if (!mounted) return;
       widget.onSave(record);
-      Navigator.pop(context);
+      Navigator.of(context).pop('saved');
+
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('저장 실패: $e')));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('저장 실패: $e')));
     } finally {
       if (mounted) {
         setState(() => _isLoading = false);
@@ -113,7 +107,6 @@ class _EmotionInputDialogState extends State<EmotionInputDialog> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            // const SizedBox(height: 5),
             const Align(
               alignment: Alignment.centerLeft,
               child: Text(
@@ -158,7 +151,6 @@ class _EmotionInputDialogState extends State<EmotionInputDialog> {
               ),
             ),
 
-
             const SizedBox(height: 28),
             _fieldLabel('제목'),
             const SizedBox(height: 8),
@@ -181,7 +173,7 @@ class _EmotionInputDialogState extends State<EmotionInputDialog> {
               children: [
                 Expanded(
                   child: ElevatedButton(
-                    onPressed: () => Navigator.pop(context),
+                    onPressed: () => Navigator.of(context).pop('closed'),
                     style: _cancelStyle(),
                     child: const Text('취소', style: TextStyle(fontSize: 14)),
                   ),
@@ -191,12 +183,9 @@ class _EmotionInputDialogState extends State<EmotionInputDialog> {
                   child: ElevatedButton(
                     onPressed: _isLoading ? null : _saveEmotion,
                     style: _saveStyle(),
-                    child:
-                        _isLoading
-                            ? const CircularProgressIndicator(
-                              color: Colors.white,
-                            )
-                            : const Text('저장', style: TextStyle(fontSize: 14)),
+                    child: _isLoading
+                        ? const CircularProgressIndicator(color: Colors.white)
+                        : const Text('저장', style: TextStyle(fontSize: 14)),
                   ),
                 ),
               ],
