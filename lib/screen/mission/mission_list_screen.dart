@@ -66,6 +66,15 @@ class _MissionListScreenState extends State<MissionListScreen> {
                         ? const Center(child: CircularProgressIndicator())
                         : _error != null
                         ? Center(child: Text('오류 발생: $_error'))
+                        : _missions.isEmpty
+                        ? const Align(
+                            alignment: Alignment(0, -0.1),
+                            child: Text(
+                              '아직 완료한 미션이 없어요!\n미션을 시작해보세요 😊',
+                              style: TextStyle(fontSize: 16, color: Colors.black54),
+                              textAlign: TextAlign.center,
+                            ),
+                    )
                         : ListView.separated(
                       padding: const EdgeInsets.symmetric(horizontal: 20),
                       itemCount: _missions.length,
@@ -146,6 +155,7 @@ class _MissionListScreenState extends State<MissionListScreen> {
                       },
                     ),
                   ),
+
                 ],
               ),
             ),
