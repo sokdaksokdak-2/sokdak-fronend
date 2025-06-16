@@ -6,6 +6,7 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:provider/provider.dart';
 import 'package:app_links/app_links.dart';
 import 'package:flutter_timezone/flutter_timezone.dart';
+import 'package:sdsd/screen/mission/mission_list_screen.dart';
 
 import 'package:sdsd/services/notification_service.dart';
 import 'package:sdsd/onboarding/intro_screen.dart';
@@ -131,7 +132,23 @@ class MyAppState extends State<MyApp> {
           backgroundColor: themeColor,
         ),
       ),
-      home: _currentScreen,
+      // home: _currentScreen,
+      initialRoute: '/',
+      onGenerateRoute: (settings) {
+        if (settings.name == '/') {
+          return MaterialPageRoute(builder: (_) => _currentScreen); // ← 첫 화면
+        }
+
+        if (settings.name == '/main') {
+          final int index = settings.arguments as int? ?? 2;
+          return MaterialPageRoute(
+            builder: (_) => MainScreen(initialIndex: index),
+            settings: settings, // arguments 유지
+          );
+        }
+
+        return MaterialPageRoute(builder: (_) => _currentScreen);
+      },
     );
   }
 }

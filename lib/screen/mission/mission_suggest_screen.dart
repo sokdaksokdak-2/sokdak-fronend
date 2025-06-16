@@ -87,11 +87,12 @@ class MissionSuggestScreen extends StatelessWidget {
                           height: 50,
                           child: ElevatedButton(
                               onPressed: () async {
+                                final currentContext = context;
                                 try {
-                                  await MissionService.acceptMission(suggestion);
+                                  final memberMissionSeq = await MissionService.acceptMission(suggestion);
 
                                   final item = MissionListItem(
-                                    memberMissionSeq: -1, // 서버에서 받은 값이 있으면 대체
+                                    memberMissionSeq: memberMissionSeq,
                                     title: suggestion.title,
                                     content: suggestion.content,
                                     completed: false,
@@ -99,34 +100,33 @@ class MissionSuggestScreen extends StatelessWidget {
                                     emotionScore: suggestion.emotionScore,
                                   );
 
-                                  Navigator.pushReplacement(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (_) => MissionStartScreen(
-                                        mission: item,
-                                        onCancel: () {
-                                          mainTabIndex.value = 2;
-                                          Navigator.of(context).pushAndRemoveUntil(
-                                            MaterialPageRoute(builder: (_) => const MainScreen()),
-                                                (route) => false,
-                                          );
-                                        },
-                                        onComplete: () {
-                                          Navigator.of(context).pushAndRemoveUntil(
-                                            MaterialPageRoute(builder: (_) => const MissionListScreen()),
-                                                (route) => false,
-                                          );
-                                        },
+                                  WidgetsBinding.instance.addPostFrameCallback((_) {
+                                    Navigator.pushReplacement(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (_) => MissionStartScreen(
+                                          mission: item,
+                                          onCancel: () async {
+                                            Navigator.of(context).pushNamedAndRemoveUntil('/main', (r) => false);
+                                          },
+                                          onComplete: () async {
+                                            try {
+                                              await MissionService.completeMission(memberMissionSeq); // ✅ 여기에 완료 처리!
+                                            } catch (e) {
+                                              debugPrint('미션 완료 실패: $e');
+                                            }
+                                          }, // context 안 쓰게 비워둠
+                                        ),
                                       ),
-                                    ),
-                                  );
+                                    );
+                                  });
+
                                 } catch (e) {
-                                  ScaffoldMessenger.of(context).showSnackBar(
+                                  ScaffoldMessenger.of(currentContext).showSnackBar(
                                     const SnackBar(content: Text('미션 수락 실패')),
                                   );
                                 }
                               },
-
 
                               style: ElevatedButton.styleFrom(
                               backgroundColor: const Color(0xFF28B960),

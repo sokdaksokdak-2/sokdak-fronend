@@ -105,12 +105,22 @@ class _HomeScreenState extends State<HomeScreen> {
       try {
         final suggestion = await ChatService.completeChat();
         if (!mounted) return;
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (_) => MissionSuggestScreen(suggestion: suggestion),
-          ),
-        );
+        // Navigator.push(
+        //   context,
+        //   MaterialPageRoute(
+        //     builder: (_) => MissionSuggestScreen(suggestion: suggestion),
+        //   ),
+        // );
+        final currentContext = context; // ✅ context 백업
+
+        // ✅ 안전하게 다음 프레임에서 push
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          Navigator.of(currentContext).push(
+            MaterialPageRoute(
+              builder: (_) => MissionSuggestScreen(suggestion: suggestion),
+            ),
+          );
+        });
       } catch (e) {
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(

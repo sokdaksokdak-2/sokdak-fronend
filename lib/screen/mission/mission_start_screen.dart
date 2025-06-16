@@ -4,8 +4,10 @@ import '../../models/mission_list_item.dart';
 
 class MissionStartScreen extends StatelessWidget {
   final MissionListItem mission;
-  final VoidCallback onCancel;
-  final VoidCallback onComplete;
+  // final VoidCallback onCancel;
+  // final VoidCallback onComplete;
+  final Future<void> Function() onCancel;
+  final Future<void> Function() onComplete;
 
   const MissionStartScreen({
     super.key,
@@ -106,7 +108,13 @@ class MissionStartScreen extends StatelessWidget {
                         SizedBox(
                           height: 50,
                           child: ElevatedButton(
-                            onPressed: onComplete,
+                            onPressed: () async {
+                              await onComplete(); // 반드시 완료 기다리기
+                              if (context.mounted) {
+                                Navigator.of(context).pushNamedAndRemoveUntil('/main', (r) => false, arguments: 3);
+                              }
+
+                            },
                             style: ElevatedButton.styleFrom(
                               backgroundColor: const Color(0xFF28B960),
                               shape: RoundedRectangleBorder(
@@ -127,7 +135,12 @@ class MissionStartScreen extends StatelessWidget {
                         SizedBox(
                           height: 50,
                           child: ElevatedButton(
-                            onPressed: onCancel,
+                            onPressed: () async{
+                              await onCancel();
+                              if (context.mounted) {
+                                Navigator.of(context).pushNamedAndRemoveUntil('/main', (r) => false, arguments: 3);
+                              }
+                            },
                             style: ElevatedButton.styleFrom(
                               backgroundColor: Colors.white,
                               foregroundColor: Colors.black,

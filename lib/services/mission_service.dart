@@ -1,4 +1,5 @@
 // lib/services/mission_service.dart
+import 'dart:convert';
 import 'dart:math';
 import 'package:dio/dio.dart';
 import 'package:sdsd/models/mission_list_item.dart';
@@ -70,7 +71,7 @@ class MissionService {
   /// 특정 회원의 최근 생성 미션
 
   /// 미션 수락 (서버로 미션 제안 수락 요청)
-  static Future<void> acceptMission(MissionSuggestion suggestion) async {
+  static Future<int> acceptMission(MissionSuggestion suggestion) async {
     try {
       final response = await Dio().post(
         '${Config.baseUrl}/api/members/${Config.memberSeq}/missions/accept',
@@ -83,13 +84,18 @@ class MissionService {
         }),
       );
 
-      if (response.statusCode != 200 && response.statusCode != 201) {
+      if (response.statusCode == 201) {
+        final data = response.data;
+        return data['member_mission_seq'];
+      } else {
         throw Exception('미션 수락 실패');
       }
+
     } catch (e) {
       print('❌ 미션 수락 오류: $e');
       throw Exception('미션 수락 실패: $e');
     }
+
   }
 
   /// 미션 완료
